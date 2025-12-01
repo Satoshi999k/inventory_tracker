@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory Tracker - Admin Dashboard</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="material-icons header-icon">inventory</i> Inventory Tracker</h1>
+            <p>Computer Shop Inventory Management System</p>
+        </header>
+
+        <nav class="navbar">
+            <ul>
+                <li><a href="/" class="active">Dashboard</a></li>
+                <li><a href="/products">Products</a></li>
+                <li><a href="/inventory">Inventory</a></li>
+                <li><a href="/sales">Sales</a></li>
+            </ul>
+            <div class="user-menu">
+                <div class="user-info">
+                    <i class="material-icons">account_circle</i>
+                    <span id="userName">Admin</span>
+                </div>
+                <div class="dropdown-menu">
+                    <a href="#" id="logoutBtn">
+                        <i class="material-icons">logout</i> Logout
+                    </a>
+                </div>
+            </div>
+        </nav>
+
+        <main>
+            <section class="dashboard">
+                <h2>Dashboard Overview</h2>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Total Products</h3>
+                        <p class="stat-value" id="totalProducts">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Low Stock Items</h3>
+                        <p class="stat-value alert" id="lowStockItems">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Total Inventory Value</h3>
+                        <p class="stat-value" id="inventoryValue">₱0.00</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Sales Today</h3>
+                        <p class="stat-value success" id="salesToday">₱0.00</p>
+                    </div>
+                </div>
+
+                <div class="charts-grid">
+                    <section class="chart-container">
+                        <h3><i class="material-icons inline-icon">show_chart</i> Inventory Distribution</h3>
+                        <canvas id="inventoryChart"></canvas>
+                    </section>
+                    <section class="chart-container">
+                        <h3><i class="material-icons inline-icon">trending_up</i> Sales Trend</h3>
+                        <canvas id="salesChart"></canvas>
+                    </section>
+                </div>
+
+                <div class="charts-grid">
+                    <section class="chart-container">
+                        <h3><i class="material-icons inline-icon">category</i> Top Categories</h3>
+                        <canvas id="categoryChart"></canvas>
+                    </section>
+                    <section class="chart-container">
+                        <h3><i class="material-icons inline-icon">bar_chart</i> Stock Status</h3>
+                        <canvas id="stockStatusChart"></canvas>
+                    </section>
+                </div>
+
+                <section class="alerts">
+                    <h3><i class="material-icons inline-icon">warning</i> Low Stock Alerts</h3>
+                    <div id="alertsList"></div>
+                </section>
+
+                <section class="recent-sales">
+                    <h3><i class="material-icons inline-icon">history</i> Recent Sales</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Transaction ID</th>
+                                <th>Product</th>
+                                <th>Quantity</th>
+                                <th>Total</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentSalesTable"></tbody>
+                    </table>
+                </section>
+            </section>
+        </main>
+
+        <footer>
+            <p>&copy; 2025 ÁDRASTOS Inventory Tracker. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/dashboard.js"></script>
+</body>
+</html>

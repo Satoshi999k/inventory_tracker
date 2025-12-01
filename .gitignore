@@ -1,0 +1,47 @@
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Dependencies
+vendor/
+node_modules/
+composer.lock
+package-lock.json
+
+# Logs
+*.log
+logs/
+
+# Cache
+*.tmp
+cache/
+.cache/
+
+# Docker
+docker-sync.yml
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Testing
+coverage/
+.coverage
+phpunit.xml
+
+# Build
+dist/
+build/
+
+# Temporary files
+tmp/
+temp/

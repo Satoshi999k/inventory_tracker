@@ -1,0 +1,28 @@
+{
+{"name": "inventory/inventory-service",
+    "description": "Inventory Management Microservice",
+    "require": {
+        "php": ">=8.2",
+        "ext-pdo": "*",
+        "ext-json": "*",
+        "ext-curl": "*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "InventoryService\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "start": "php -S 0.0.0.0:8000 index.php",
+        "test": "phpunit",
+        "test-coverage": "phpunit --coverage-html=coverage"
+    }
+}

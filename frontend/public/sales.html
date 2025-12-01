@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales - Inventory Tracker</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="material-icons header-icon">inventory</i> Inventory Tracker</h1>
+            <p>Computer Shop Inventory Management System</p>
+        </header>
+
+        <nav class="navbar">
+            <ul>
+                <li><a href="/">Dashboard</a></li>
+                <li><a href="/products">Products</a></li>
+                <li><a href="/inventory">Inventory</a></li>
+                <li><a href="/sales" class="active">Sales</a></li>
+            </ul>
+            <div class="user-menu">
+                <div class="user-info">
+                    <i class="material-icons">account_circle</i>
+                    <span id="userName">Admin</span>
+                </div>
+                <div class="dropdown-menu">
+                    <a href="#" id="logoutBtn"><i class="material-icons">logout</i> Logout</a>
+                </div>
+            </div>
+        </nav>
+
+        <main>
+            <section class="sales">
+                <div class="section-header">
+                    <h2><i class="material-icons inline-icon">shopping_cart</i> Sales Management</h2>
+                    <button class="btn btn-primary" onclick="openNewSaleForm()"><i class="material-icons btn-icon">add</i> Record Sale</button>
+                </div>
+
+                <div class="admin-stats">
+                    <div class="mini-stat">
+                        <i class="material-icons">receipt</i>
+                        <div>
+                            <span class="mini-stat-value" id="totalSalesCount">0</span>
+                            <span class="mini-stat-label">Total Sales</span>
+                        </div>
+                    </div>
+                    <div class="mini-stat">
+                        <i class="material-icons">trending_up</i>
+                        <div>
+                            <span class="mini-stat-value" id="totalRevenueCount">₱0</span>
+                            <span class="mini-stat-label">Total Revenue</span>
+                        </div>
+                    </div>
+                    <div class="mini-stat">
+                        <i class="material-icons">shopping_bag</i>
+                        <div>
+                            <span class="mini-stat-value" id="avgOrderCount">₱0</span>
+                            <span class="mini-stat-label">Avg Order Value</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table class="sales-table">
+                        <thead>
+                            <tr>
+                                <th>Transaction ID</th>
+                                <th>Product</th>
+                                <th>Quantity</th>
+                                <th>Unit Price</th>
+                                <th>Total</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="salesTable"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- New Sale Modal -->
+            <div id="newSaleModal" class="modal">
+                <div class="modal-content">
+                    <span class="close" onclick="closeNewSaleForm()">&times;</span>
+                    <h2><i class="material-icons inline-icon">add_circle</i> Record New Sale</h2>
+                    <form id="newSaleForm" onsubmit="submitNewSale(event)">
+                        <select id="saleSku" required>
+                            <option value="">Select Product...</option>
+                        </select>
+                        <input type="number" placeholder="Quantity Sold" id="saleQuantity" required>
+                        <button type="submit" class="btn btn-success"><i class="material-icons btn-icon">save</i> Record Sale</button>
+                    </form>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>&copy; ÁDRASTOS 2024 Inventory Tracker. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/sales.js"></script>
+</body>
+</html>

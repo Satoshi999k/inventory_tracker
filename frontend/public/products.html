@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Products - Inventory Tracker</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="material-icons header-icon">inventory</i> Inventory Tracker</h1>
+            <p>Computer Shop Inventory Management System</p>
+        </header>
+
+        <nav class="navbar">
+            <ul>
+                <li><a href="/">Dashboard</a></li>
+                <li><a href="/products" class="active">Products</a></li>
+                <li><a href="/inventory">Inventory</a></li>
+                <li><a href="/sales">Sales</a></li>
+            </ul>
+            <div class="user-menu">
+                <div class="user-info">
+                    <i class="material-icons">account_circle</i>
+                    <span id="userName">Admin</span>
+                </div>
+                <div class="dropdown-menu">
+                    <a href="#" id="logoutBtn"><i class="material-icons">logout</i> Logout</a>
+                </div>
+            </div>
+        </nav>
+
+        <main>
+            <section class="products">
+                <div class="section-header">
+                    <h2><i class="material-icons inline-icon">inventory_2</i> Product Management</h2>
+                    <button class="btn btn-primary" onclick="openAddProductForm()"><i class="material-icons btn-icon">add</i> Add New Product</button>
+                </div>
+                
+                <div class="admin-stats">
+                    <div class="mini-stat">
+                        <i class="material-icons">shopping_bag</i>
+                        <div>
+                            <span class="mini-stat-value" id="totalProductsCount">0</span>
+                            <span class="mini-stat-label">Total Products</span>
+                        </div>
+                    </div>
+                    <div class="mini-stat">
+                        <i class="material-icons">category</i>
+                        <div>
+                            <span class="mini-stat-value" id="totalCategoriesCount">0</span>
+                            <span class="mini-stat-label">Categories</span>
+                        </div>
+                    </div>
+                    <div class="mini-stat">
+                        <i class="material-icons">local_offer</i>
+                        <div>
+                            <span class="mini-stat-value" id="avgPriceCount">₱0</span>
+                            <span class="mini-stat-label">Avg Price</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="product-grid" id="productsGrid"></div>
+            </section>
+
+            <!-- Add Product Modal -->
+            <div id="addProductModal" class="modal">
+                <div class="modal-content">
+                    <span class="close" onclick="closeAddProductForm()">&times;</span>
+                    <h2><i class="material-icons inline-icon">add_circle</i> Add New Product</h2>
+                    <form id="addProductForm" onsubmit="submitAddProduct(event)">
+                        <input type="text" placeholder="SKU" id="sku" required>
+                        <input type="text" placeholder="Product Name" id="name" required>
+                        <input type="text" placeholder="Category" id="category">
+                        <input type="number" placeholder="Price" id="price" step="0.01" required>
+                        <textarea placeholder="Description" id="description"></textarea>
+                        <input type="number" placeholder="Stock Threshold" id="stock_threshold" value="10">
+                        <button type="submit" class="btn btn-success"><i class="material-icons btn-icon">save</i> Add Product</button>
+                    </form>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>&copy; 2024 ÁDRASTOS Inventory Tracker. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/products.js"></script>
+</body>
+</html>

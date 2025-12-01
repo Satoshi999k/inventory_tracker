@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory - Inventory Tracker</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="material-icons header-icon">inventory</i> Inventory Tracker</h1>
+            <p>Computer Shop Inventory Management System</p>
+        </header>
+
+        <nav class="navbar">
+            <ul>
+                <li><a href="/">Dashboard</a></li>
+                <li><a href="/products">Products</a></li>
+                <li><a href="/inventory" class="active">Inventory</a></li>
+                <li><a href="/sales">Sales</a></li>
+            </ul>
+            <div class="user-menu">
+                <div class="user-info">
+                    <i class="material-icons">account_circle</i>
+                    <span id="userName">Admin</span>
+                </div>
+                <div class="dropdown-menu">
+                    <a href="#" id="logoutBtn"><i class="material-icons">logout</i> Logout</a>
+                </div>
+            </div>
+        </nav>
+
+        <main>
+            <section class="inventory">
+                <div class="section-header">
+                    <h2><i class="material-icons inline-icon">warehouse</i> Inventory Management</h2>
+                    <button class="btn btn-primary" onclick="openRestockForm()"><i class="material-icons btn-icon">download</i> Restock Items</button>
+                </div>
+
+                <div class="admin-stats">
+                    <div class="mini-stat">
+                        <i class="material-icons">inventory</i>
+                        <div>
+                            <span class="mini-stat-value" id="totalStockCount">0</span>
+                            <span class="mini-stat-label">Total Items</span>
+                        </div>
+                    </div>
+                    <div class="mini-stat">
+                        <i class="material-icons" style="color: #dc3545;">warning</i>
+                        <div>
+                            <span class="mini-stat-value" id="lowStockCount">0</span>
+                            <span class="mini-stat-label">Low Stock</span>
+                        </div>
+                    </div>
+                    <div class="mini-stat">
+                        <i class="material-icons" style="color: #f59e0b;">info</i>
+                        <div>
+                            <span class="mini-stat-value" id="mediumStockCount">0</span>
+                            <span class="mini-stat-label">Medium Stock</span>
+                        </div>
+                    </div>
+                    <div class="mini-stat">
+                        <i class="material-icons" style="color: #4caf50;">check_circle</i>
+                        <div>
+                            <span class="mini-stat-value" id="goodStockCount">0</span>
+                            <span class="mini-stat-label">Good Stock</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table class="inventory-table">
+                        <thead>
+                            <tr>
+                                <th>SKU</th>
+                                <th>Product Name</th>
+                                <th>Current Stock</th>
+                                <th>Threshold</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventoryTable"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Restock Modal -->
+            <div id="restockModal" class="modal">
+                <div class="modal-content">
+                    <span class="close" onclick="closeRestockForm()">&times;</span>
+                    <h2><i class="material-icons inline-icon">add_circle</i> Restock Items</h2>
+                    <form id="restockForm" onsubmit="submitRestock(event)">
+                        <select id="restockSku" required>
+                            <option value="">Select Product...</option>
+                        </select>
+                        <input type="number" placeholder="Quantity to Add" id="restockQuantity" required>
+                        <button type="submit" class="btn btn-success"><i class="material-icons btn-icon">save</i> Restock</button>
+                    </form>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>&copy; 2024 ÁDRASTOS Inventory Tracker. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/inventory.js"></script>
+</body>
+</html>

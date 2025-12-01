@@ -1,0 +1,158 @@
+version: '3.8'
+
+services:
+  # MySQL Database for Product Catalog and Sales
+  mysql:
+    image: mysql:8.0
+    container_name: inventorytracker-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: inventorydb
+      MYSQL_USER: inventory_user
+      MYSQL_PASSWORD: inventory_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./databases/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - inventorynet
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: inventorytracker-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - inventorynet
+
+  # RabbitMQ Message Broker
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: inventorytracker-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - inventorynet
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: inventorytracker-api-gateway
+    ports:
+      - "8000:8000"
+    depends_on:
+      - product-catalog-service
+      - inventory-service
+      - sales-service
+    networks:
+      - inventorynet
+    environment:
+      - PRODUCT_SERVICE_URL=http://product-catalog-service:8001
+      - INVENTORY_SERVICE_URL=http://inventory-service:8002
+      - SALES_SERVICE_URL=http://sales-service:8003
+
+  # Product Catalog Service
+  product-catalog-service:
+    build:
+      context: ./services/product-catalog-service
+      dockerfile: Dockerfile
+    container_name: inventorytracker-product-service
+    ports:
+      - "8001:8001"
+    depends_on:
+      - mysql
+      - redis
+    networks:
+      - inventorynet
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=inventory_user
+      - DB_PASSWORD=inventory_pass
+      - DB_NAME=inventorydb
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+
+  # Inventory Service
+  inventory-service:
+    build:
+      context: ./services/inventory-service
+      dockerfile: Dockerfile
+    container_name: inventorytracker-inventory-service
+    ports:
+      - "8002:8002"
+    depends_on:
+      - mysql
+      - redis
+      - rabbitmq
+    networks:
+      - inventorynet
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=inventory_user
+      - DB_PASSWORD=inventory_pass
+      - DB_NAME=inventorydb
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+
+  # Sales Service
+  sales-service:
+    build:
+      context: ./services/sales-service
+      dockerfile: Dockerfile
+    container_name: inventorytracker-sales-service
+    ports:
+      - "8003:8003"
+    depends_on:
+      - mysql
+      - redis
+      - rabbitmq
+    networks:
+      - inventorynet
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=inventory_user
+      - DB_PASSWORD=inventory_pass
+      - DB_NAME=inventorydb
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+
+  # Frontend - Admin Interface
+  frontend:
+    build:
+      context: ./frontend/admin-interface
+      dockerfile: Dockerfile
+    container_name: inventorytracker-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - api-gateway
+    networks:
+      - inventorynet
+
+volumes:
+  mysql_data:
+  redis_data:
+  rabbitmq_data:
+
+networks:
+  inventorynet:
+    driver: bridge
