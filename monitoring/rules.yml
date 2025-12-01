@@ -1,0 +1,92 @@
+groups:
+  - name: inventory_tracker_alerts
+    interval: 30s
+    rules:
+      # API Gateway Alerts
+      - alert: HighAPIGatewayErrorRate
+        expr: (rate(http_requests_total{job="api-gateway",status=~"5.."}[5m]) / rate(http_requests_total{job="api-gateway"}[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate in API Gateway"
+          description: "Error rate > 5% for 5 minutes"
+
+      - alert: APIGatewayHighLatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="api-gateway"}[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High latency in API Gateway"
+          description: "95th percentile latency > 1 second"
+
+      # Service Availability Alerts
+      - alert: ServiceDown
+        expr: up{job=~"product-catalog-service|inventory-service|sales-service"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "Service has been unavailable for 1 minute"
+
+      # Database Alerts
+      - alert: HighDatabaseConnections
+        expr: mysql_global_status_threads_connected > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High number of database connections"
+          description: "Database connections > 80"
+
+      # Memory Alerts
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage > 85%"
+
+      # Disk Space Alerts
+      - alert: LowDiskSpace
+        expr: (node_filesystem_avail_bytes{fstype=~"ext4|xfs"} / node_filesystem_size_bytes) < 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Low disk space on {{ $labels.device }}"
+          description: "Less than 10% disk space available"
+
+      # Response Time Alerts
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High response time detected"
+          description: "99th percentile response time > 2 seconds"
+
+      # Request Rate Alerts
+      - alert: ExcessiveRequestRate
+        expr: rate(http_requests_total[5m]) > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Excessive request rate"
+          description: "Request rate > 1000 req/s"
+
+      # Cache Hit Rate
+      - alert: LowCacheHitRate
+        expr: (rate(redis_commands_processed_total{command="get"}[5m]) - rate(redis_keyspace_hits_total[5m])) / rate(redis_commands_processed_total{command="get"}[5m]) > 0.3
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low Redis cache hit rate"
+          description: "Cache hit rate < 70%"

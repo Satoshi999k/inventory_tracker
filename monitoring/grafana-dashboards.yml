@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: 'Inventory Tracker Dashboards'
+    orgId: 1
+    folder: 'Inventory Tracker'
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards

@@ -1,0 +1,69 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'inventory-tracker'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+# Load rules once and periodically evaluate them
+rule_files:
+  - 'rules.yml'
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # API Gateway metrics
+  - job_name: 'api-gateway'
+    static_configs:
+      - targets: ['api-gateway:8000']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Product Catalog Service metrics
+  - job_name: 'product-catalog-service'
+    static_configs:
+      - targets: ['product-catalog-service:8001']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Inventory Service metrics
+  - job_name: 'inventory-service'
+    static_configs:
+      - targets: ['inventory-service:8002']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Sales Service metrics
+  - job_name: 'sales-service'
+    static_configs:
+      - targets: ['sales-service:8003']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+
+  # Node Exporter - System metrics
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 15s
+
+  # MySQL metrics (via mysqld-exporter if available)
+  - job_name: 'mysql'
+    static_configs:
+      - targets: ['mysql:3306']
+    scrape_interval: 15s
+
+  # Redis metrics
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    scrape_interval: 15s
