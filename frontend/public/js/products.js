@@ -28,7 +28,7 @@ async function loadProducts() {
                 <div class="product-price">${formatCurrency(product.price)}</div>
                 <p>${product.description || 'No description'}</p>
                 <p><small>Threshold: ${product.stock_threshold}</small></p>
-                <button class="btn btn-danger" onclick="deleteProduct('${product.sku}')">Delete</button>
+                <button class="btn btn-danger" onclick="deleteProduct('${product.sku}', '${product.name.replace(/'/g, "\\'")}')">Delete</button>
             </div>
         `).join('');
 
@@ -95,14 +95,86 @@ async function submitAddProduct(event) {
     }
 }
 
-async function deleteProduct(sku) {
-    if (!confirm(`Are you sure you want to delete product ${sku}?`)) return;
+async function deleteProduct(sku, productName = '') {
+    // Create enhanced confirmation dialog
+    const modalId = 'deleteConfirmModal_' + Date.now();
+    const modal = document.createElement('div');
+    modal.id = modalId;
+    modal.className = 'delete-confirm-modal';
+    modal.innerHTML = `
+        <div class="delete-confirm-content">
+            <div class="delete-confirm-header">
+                <i class="material-icons delete-icon">warning</i>
+                <h2>Delete Product?</h2>
+            </div>
+            <div class="delete-confirm-body">
+                <p class="warning-text">Are you sure you want to delete this product?</p>
+                <div class="product-info">
+                    <p><strong>SKU:</strong> ${sku}</p>
+                    ${productName ? `<p><strong>Name:</strong> ${productName}</p>` : ''}
+                </div>
+                <p class="deletion-warning"><i class="material-icons">info</i> This action cannot be undone. All related data will be permanently deleted.</p>
+            </div>
+            <div class="delete-confirm-footer">
+                <button class="btn btn-secondary" onclick="closeDeleteConfirm('${modalId}')"><i class="material-icons">close</i> Cancel</button>
+                <button class="btn btn-danger" onclick="confirmDeleteProduct('${sku}', '${modalId}')">
+                    <i class="material-icons">delete</i> Delete Product
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    modal.setAttribute('data-sku', sku);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeDeleteConfirm(modalId);
+    });
+}
 
+function closeDeleteConfirm(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.animation = 'fadeOut 0.3s ease-out';
+        setTimeout(() => modal.remove(), 300);
+    }
+}
+
+async function confirmDeleteProduct(sku, modalId) {
+    closeDeleteConfirm(modalId);
+    
     try {
         const response = await api.delete('/products', { sku });
         if (response.success) {
+            // Remove product card from DOM immediately (AJAX)
+            const grid = document.getElementById('productsGrid');
+            const productCards = grid.querySelectorAll('.product-card');
+            let productRemoved = false;
+            
+            productCards.forEach(card => {
+                const skuElement = card.querySelector('p strong');
+                if (skuElement && skuElement.textContent === 'SKU:' && 
+                    skuElement.nextSibling.textContent.trim() === sku) {
+                    card.style.animation = 'fadeOut 0.3s ease-out forwards';
+                    setTimeout(() => card.remove(), 300);
+                    productRemoved = true;
+                }
+            });
+            
             showAlert('Product deleted successfully', 'success');
-            loadProducts();
+            
+            // Update stats after removal
+            setTimeout(() => {
+                const remainingCards = grid.querySelectorAll('.product-card');
+                if (remainingCards.length === 0) {
+                    grid.innerHTML = '<div class="empty-state"><h3>No products found</h3></div>';
+                } else {
+                    // Get all remaining products data and update stats
+                    const products = Array.from(remainingCards).map(card => ({
+                        sku: card.querySelector('p').nextSibling.textContent.trim()
+                    }));
+                    updateProductStats(products);
+                }
+            }, 300);
         } else {
             showAlert('Failed to delete product', 'error');
         }

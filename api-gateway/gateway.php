@@ -111,8 +111,8 @@ function routeRequest($method, $url)
     // Set request method
     curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
     
-    // Forward request body for POST/PUT
-    if (in_array($method, ['POST', 'PUT', 'PATCH'])) {
+    // Forward request body for POST/PUT/DELETE
+    if (in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'])) {
         $body = file_get_contents('php://input');
         curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
     }

@@ -18,11 +18,6 @@ services:
       - '--web.console.templates=/usr/share/prometheus/consoles'
     networks:
       - inventorynet
-    depends_on:
-      - api-gateway
-      - product-catalog-service
-      - inventory-service
-      - sales-service
 
   # Grafana - Visualization & Dashboards
   grafana:
