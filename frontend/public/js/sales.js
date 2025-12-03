@@ -26,11 +26,11 @@ async function loadSales() {
             table.innerHTML = sales.map(sale => `
                 <tr>
                     <td>${sale.transaction_id}</td>
-                    <td>${sale.name || 'Unknown'}</td>
-                    <td>${sale.quantity}</td>
-                    <td>${formatCurrency(sale.unit_price)}</td>
-                    <td>${formatCurrency(sale.total)}</td>
-                    <td>${formatDate(sale.sale_date)}</td>
+                    <td>${sale.items || 'Unknown'}</td>
+                    <td>${sale.payment_method || 'N/A'}</td>
+                    <td>${formatCurrency(sale.total_amount)}</td>
+                    <td><span class="status-badge ${sale.status}">${sale.status || 'completed'}</span></td>
+                    <td>${formatDate(sale.created_at)}</td>
                 </tr>
             `).join('');
 
@@ -55,7 +55,7 @@ function updateSalesStats(sales) {
     if (totalEl) totalEl.textContent = totalTransactions;
 
     // Total Revenue
-    const totalRevenue = sales.reduce((sum, sale) => sum + (parseFloat(sale.total) || 0), 0);
+    const totalRevenue = sales.reduce((sum, sale) => sum + (parseFloat(sale.total_amount) || 0), 0);
     const revenueEl = document.getElementById('totalRevenueCount');
     if (revenueEl) revenueEl.textContent = formatCurrency(totalRevenue);
 

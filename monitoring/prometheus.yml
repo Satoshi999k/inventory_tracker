@@ -25,45 +25,34 @@ scrape_configs:
   # API Gateway metrics
   - job_name: 'api-gateway'
     static_configs:
-      - targets: ['api-gateway:8000']
+      - targets: ['localhost:8000']
     metrics_path: '/metrics'
     scrape_interval: 10s
 
   # Product Catalog Service metrics
-  - job_name: 'product-catalog-service'
+  - job_name: 'product-catalog'
     static_configs:
-      - targets: ['product-catalog-service:8001']
+      - targets: ['localhost:8001']
     metrics_path: '/metrics'
     scrape_interval: 10s
 
   # Inventory Service metrics
-  - job_name: 'inventory-service'
+  - job_name: 'inventory'
     static_configs:
-      - targets: ['inventory-service:8002']
+      - targets: ['localhost:8002']
     metrics_path: '/metrics'
     scrape_interval: 10s
 
   # Sales Service metrics
-  - job_name: 'sales-service'
+  - job_name: 'sales'
     static_configs:
-      - targets: ['sales-service:8003']
+      - targets: ['localhost:8003']
     metrics_path: '/metrics'
     scrape_interval: 10s
 
-  # Node Exporter - System metrics
-  - job_name: 'node-exporter'
+  # Frontend metrics
+  - job_name: 'frontend'
     static_configs:
-      - targets: ['node-exporter:9100']
-    scrape_interval: 15s
-
-  # MySQL metrics (via mysqld-exporter if available)
-  - job_name: 'mysql'
-    static_configs:
-      - targets: ['mysql:3306']
-    scrape_interval: 15s
-
-  # Redis metrics
-  - job_name: 'redis'
-    static_configs:
-      - targets: ['redis:6379']
-    scrape_interval: 15s
+      - targets: ['localhost:3000']
+    metrics_path: '/metrics'
+    scrape_interval: 10s

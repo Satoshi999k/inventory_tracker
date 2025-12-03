@@ -1,5 +1,5 @@
 // API Configuration
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'http://127.0.0.1:8000';
 const CACHE_DURATION = 5000; // 5 seconds cache
 const REQUEST_TIMEOUT = 8000; // 8 second timeout
 
@@ -51,12 +51,16 @@ const api = {
             }
 
             // Create promise for this request
-            const requestPromise = this.fetchWithTimeout(`${API_BASE_URL}${endpoint}`)
+            const url = `${API_BASE_URL}${endpoint}`;
+            console.log('Fetching:', url);
+            const requestPromise = this.fetchWithTimeout(url)
                 .then(response => {
+                    console.log('Response status:', response.status);
                     if (!response.ok) throw new Error(`HTTP ${response.status}`);
                     return response.json();
                 })
                 .then(data => {
+                    console.log('Data received:', data);
                     if (useCache) this.setCache(endpoint, data);
                     pendingRequests.delete(endpoint);
                     return data;

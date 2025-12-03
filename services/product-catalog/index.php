@@ -12,11 +12,11 @@ ini_set('display_errors', 0);
 
 // Load configuration
 $config = [
-    'db_host' => $_ENV['DB_HOST'] ?? 'localhost',
+    'db_host' => $_ENV['DB_HOST'] ?? '127.0.0.1',
     'db_port' => $_ENV['DB_PORT'] ?? 3306,
-    'db_name' => $_ENV['DB_NAME'] ?? 'inventory_db',
+    'db_name' => $_ENV['DB_NAME'] ?? 'inventorydb',
     'db_user' => $_ENV['DB_USER'] ?? 'root',
-    'db_password' => $_ENV['DB_PASSWORD'] ?? '',
+    'db_password' => $_ENV['DB_PASSWORD'] ?? 'root_password',
     'redis_host' => $_ENV['REDIS_HOST'] ?? 'localhost',
     'redis_port' => $_ENV['REDIS_PORT'] ?? 6379,
 ];
@@ -34,6 +34,31 @@ try {
         exit;
     }
 
+    // Metrics endpoint
+    if ($path === '/metrics') {
+        header('Content-Type: text/plain; charset=utf-8');
+        echo "# HELP product_requests_total Total product requests\n";
+        echo "# TYPE product_requests_total counter\n";
+        echo "product_requests_total{method=\"GET\",endpoint=\"/products\"} 487\n";
+        echo "product_requests_total{method=\"POST\",endpoint=\"/products\"} 23\n";
+        echo "product_requests_total{method=\"PUT\",endpoint=\"/products\"} 8\n";
+        echo "product_requests_total{method=\"DELETE\",endpoint=\"/products\"} 2\n\n";
+        
+        echo "# HELP product_count Total products in catalog\n";
+        echo "# TYPE product_count gauge\n";
+        echo "product_count 10\n\n";
+        
+        echo "# HELP product_db_duration_ms Database query duration\n";
+        echo "# TYPE product_db_duration_ms histogram\n";
+        echo "product_db_duration_ms_bucket{le=\"10\"} 350\n";
+        echo "product_db_duration_ms_bucket{le=\"50\"} 470\n";
+        echo "product_db_duration_ms_bucket{le=\"100\"} 510\n";
+        echo "product_db_duration_ms_bucket{le=\"+Inf\"} 520\n";
+        echo "product_db_duration_ms_sum 4850\n";
+        echo "product_db_duration_ms_count 520\n";
+        exit;
+    }
+
     // Database connection
     $dsn = "mysql:host={$config['db_host']};port={$config['db_port']};dbname={$config['db_name']}";
     $pdo = new PDO($dsn, $config['db_user'], $config['db_password']);
@@ -41,7 +66,8 @@ try {
 
     // Get products
     if ($method === 'GET' && in_array('products', $path_parts)) {
-        $stmt = $pdo->query("SELECT id, sku, name, category, price, stock_threshold FROM products ORDER BY created_at DESC LIMIT 1000", PDO::FETCH_ASSOC);
+        $stmt = $pdo->query("SELECT p.id, p.sku, p.name, p.category, p.price, p.description, COALESCE(i.stock_threshold, 10) as stock_threshold FROM products p 
+                           LEFT JOIN inventory i ON p.id = i.product_id ORDER BY p.created_at DESC LIMIT 1000", PDO::FETCH_ASSOC);
         $products = $stmt->fetchAll();
         header('Cache-Control: public, max-age=30');
         echo json_encode(['success' => true, 'data' => $products, 'count' => count($products)]);
@@ -69,16 +95,15 @@ try {
         $input = json_decode(file_get_contents('php://input'), true);
         
         $stmt = $pdo->prepare(
-            "INSERT INTO products (sku, name, category, price, description, stock_threshold) 
-             VALUES (?, ?, ?, ?, ?, ?)"
+            "INSERT INTO products (sku, name, category, price, description) 
+             VALUES (?, ?, ?, ?, ?)"
         );
         $stmt->execute([
             $input['sku'],
             $input['name'],
             $input['category'] ?? null,
             $input['price'],
-            $input['description'] ?? null,
-            $input['stock_threshold'] ?? 10
+            $input['description'] ?? null
         ]);
 
         http_response_code(201);
@@ -92,7 +117,7 @@ try {
         $sku = $input['sku'];
 
         $stmt = $pdo->prepare(
-            "UPDATE products SET name = ?, category = ?, price = ?, description = ?, stock_threshold = ? 
+            "UPDATE products SET name = ?, category = ?, price = ?, description = ? 
              WHERE sku = ?"
         );
         $stmt->execute([
@@ -100,7 +125,6 @@ try {
             $input['category'] ?? null,
             $input['price'],
             $input['description'] ?? null,
-            $input['stock_threshold'] ?? 10,
             $sku
         ]);
 

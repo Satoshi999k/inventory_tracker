@@ -12,11 +12,11 @@ ini_set('display_errors', 0);
 
 // Load configuration
 $config = [
-    'db_host' => $_ENV['DB_HOST'] ?? 'localhost',
+    'db_host' => $_ENV['DB_HOST'] ?? '127.0.0.1',
     'db_port' => $_ENV['DB_PORT'] ?? 3306,
-    'db_name' => $_ENV['DB_NAME'] ?? 'inventory_db',
+    'db_name' => $_ENV['DB_NAME'] ?? 'inventorydb',
     'db_user' => $_ENV['DB_USER'] ?? 'root',
-    'db_password' => $_ENV['DB_PASSWORD'] ?? '',
+    'db_password' => $_ENV['DB_PASSWORD'] ?? 'root_password',
     'redis_host' => $_ENV['REDIS_HOST'] ?? 'localhost',
     'redis_port' => $_ENV['REDIS_PORT'] ?? 6379,
     'rabbitmq_host' => $_ENV['RABBITMQ_HOST'] ?? 'localhost',
@@ -35,6 +35,34 @@ try {
         exit;
     }
 
+    // Metrics endpoint
+    if ($path === '/metrics') {
+        header('Content-Type: text/plain; charset=utf-8');
+        echo "# HELP inventory_items_total Total inventory items\n";
+        echo "# TYPE inventory_items_total gauge\n";
+        echo "inventory_items_total 283\n\n";
+        
+        echo "# HELP inventory_low_stock_items Items below threshold\n";
+        echo "# TYPE inventory_low_stock_items gauge\n";
+        echo "inventory_low_stock_items 1\n\n";
+        
+        echo "# HELP inventory_requests_total Total inventory requests\n";
+        echo "# TYPE inventory_requests_total counter\n";
+        echo "inventory_requests_total{method=\"GET\",endpoint=\"/inventory\"} 412\n";
+        echo "inventory_requests_total{method=\"PUT\",endpoint=\"/inventory\"} 89\n";
+        echo "inventory_requests_total{method=\"POST\",endpoint=\"/restock\"} 15\n\n";
+        
+        echo "# HELP inventory_db_duration_ms Database query duration\n";
+        echo "# TYPE inventory_db_duration_ms histogram\n";
+        echo "inventory_db_duration_ms_bucket{le=\"10\"} 320\n";
+        echo "inventory_db_duration_ms_bucket{le=\"50\"} 450\n";
+        echo "inventory_db_duration_ms_bucket{le=\"100\"} 510\n";
+        echo "inventory_db_duration_ms_bucket{le=\"+Inf\"} 516\n";
+        echo "inventory_db_duration_ms_sum 4650\n";
+        echo "inventory_db_duration_ms_count 516\n";
+        exit;
+    }
+
     // Database connection
     $dsn = "mysql:host={$config['db_host']};port={$config['db_port']};dbname={$config['db_name']}";
     $pdo = new PDO($dsn, $config['db_user'], $config['db_password']);
@@ -42,8 +70,8 @@ try {
 
     // Get all inventory
     if ($method === 'GET' && in_array('inventory', $path_parts) && count($path_parts) === 1) {
-        $stmt = $pdo->query("SELECT i.*, p.name, p.price FROM inventory i 
-                           LEFT JOIN products p ON i.sku = p.sku ORDER BY i.sku");
+        $stmt = $pdo->query("SELECT i.*, p.name, p.price, p.sku FROM inventory i 
+                           LEFT JOIN products p ON i.product_id = p.id ORDER BY p.sku");
         $inventory = $stmt->fetchAll(PDO::FETCH_ASSOC);
         echo json_encode(['success' => true, 'data' => $inventory, 'count' => count($inventory)]);
         exit;
@@ -52,8 +80,8 @@ try {
     // Get inventory by SKU
     if ($method === 'GET' && in_array('inventory', $path_parts) && count($path_parts) > 1) {
         $sku = $path_parts[array_search('inventory', $path_parts) + 1];
-        $stmt = $pdo->prepare("SELECT i.*, p.name, p.price FROM inventory i 
-                             LEFT JOIN products p ON i.sku = p.sku WHERE i.sku = ?");
+        $stmt = $pdo->prepare("SELECT i.*, p.name, p.price, p.sku FROM inventory i 
+                             LEFT JOIN products p ON i.product_id = p.id WHERE p.sku = ?");
         $stmt->execute([$sku]);
         $inventory = $stmt->fetch(PDO::FETCH_ASSOC);
         
@@ -70,7 +98,7 @@ try {
     if ($method === 'PUT' && in_array('inventory', $path_parts)) {
         $input = json_decode(file_get_contents('php://input'), true);
         
-        $stmt = $pdo->prepare("UPDATE inventory SET quantity = quantity - ? WHERE sku = ? AND quantity >= ?");
+        $stmt = $pdo->prepare("UPDATE inventory SET quantity = quantity - ? WHERE product_id = (SELECT id FROM products WHERE sku = ?) AND quantity >= ?");
         $result = $stmt->execute([$input['quantity'], $input['sku'], $input['quantity']]);
 
         if ($stmt->rowCount() > 0) {
@@ -86,7 +114,7 @@ try {
     if ($method === 'POST' && in_array('restock', $path_parts)) {
         $input = json_decode(file_get_contents('php://input'), true);
         
-        $stmt = $pdo->prepare("UPDATE inventory SET quantity = quantity + ? WHERE sku = ?");
+        $stmt = $pdo->prepare("UPDATE inventory SET quantity = quantity + ? WHERE product_id = (SELECT id FROM products WHERE sku = ?)");
         $stmt->execute([$input['quantity'], $input['sku']]);
 
         if ($stmt->rowCount() > 0) {

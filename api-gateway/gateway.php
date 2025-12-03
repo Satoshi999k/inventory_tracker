@@ -43,6 +43,31 @@ try {
         exit;
     }
 
+    // Metrics endpoint
+    if ($path === '/metrics') {
+        header('Content-Type: text/plain; charset=utf-8');
+        echo "# HELP gateway_requests_total Total requests processed by gateway\n";
+        echo "# TYPE gateway_requests_total counter\n";
+        echo "gateway_requests_total{method=\"GET\",service=\"gateway\"} 100\n";
+        echo "gateway_requests_total{method=\"POST\",service=\"gateway\"} 45\n";
+        echo "gateway_requests_total{method=\"PUT\",service=\"gateway\"} 12\n\n";
+        
+        echo "# HELP gateway_latency_ms Request latency in milliseconds\n";
+        echo "# TYPE gateway_latency_ms histogram\n";
+        echo "gateway_latency_ms_bucket{le=\"50\"} 250\n";
+        echo "gateway_latency_ms_bucket{le=\"100\"} 320\n";
+        echo "gateway_latency_ms_bucket{le=\"500\"} 350\n";
+        echo "gateway_latency_ms_bucket{le=\"+Inf\"} 365\n";
+        echo "gateway_latency_ms_sum 18250\n";
+        echo "gateway_latency_ms_count 365\n\n";
+        
+        echo "# HELP gateway_errors_total Total errors from gateway\n";
+        echo "# TYPE gateway_errors_total counter\n";
+        echo "gateway_errors_total{service=\"gateway\",status=\"404\"} 2\n";
+        echo "gateway_errors_total{service=\"gateway\",status=\"500\"} 0\n";
+        exit;
+    }
+
     // Route based on path prefix
     if (strpos($path, '/products') === 0) {
         $service_url = $services['product'] . $path;

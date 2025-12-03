@@ -1,0 +1,53 @@
+groups:
+  - name: inventory_tracker
+    interval: 30s
+    rules:
+      # Alert when low stock items exist
+      - alert: LowStockAlert
+        expr: inventory_low_stock_items > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low stock items detected"
+          description: "{{ $value }} items are below stock threshold"
+
+      # Alert when sales drop to zero
+      - alert: NoSalesAlert
+        expr: rate(sales_transactions_total[1h]) == 0
+        for: 1h
+        labels:
+          severity: info
+        annotations:
+          summary: "No sales in the last hour"
+          description: "Sales transaction rate is zero"
+
+      # Alert on high database latency
+      - alert: HighDBLatency
+        expr: histogram_quantile(0.95, gateway_latency_ms) > 500
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High database latency detected"
+          description: "95th percentile latency is {{ $value }}ms"
+
+      # Alert on API errors
+      - alert: HighErrorRate
+        expr: rate(gateway_errors_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate in API"
+          description: "Error rate is {{ $value | humanizePercentage }}"
+
+      # Alert when service is down
+      - alert: ServiceDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "Service has been unreachable for 2 minutes"

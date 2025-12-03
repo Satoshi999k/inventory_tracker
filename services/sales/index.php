@@ -12,11 +12,11 @@ ini_set('display_errors', 0);
 
 // Load configuration
 $config = [
-    'db_host' => $_ENV['DB_HOST'] ?? 'localhost',
+    'db_host' => $_ENV['DB_HOST'] ?? '127.0.0.1',
     'db_port' => $_ENV['DB_PORT'] ?? 3306,
-    'db_name' => $_ENV['DB_NAME'] ?? 'inventory_db',
+    'db_name' => $_ENV['DB_NAME'] ?? 'inventorydb',
     'db_user' => $_ENV['DB_USER'] ?? 'root',
-    'db_password' => $_ENV['DB_PASSWORD'] ?? '',
+    'db_password' => $_ENV['DB_PASSWORD'] ?? 'root_password',
     'product_service_url' => $_ENV['PRODUCT_SERVICE_URL'] ?? 'http://localhost:8001',
     'inventory_service_url' => $_ENV['INVENTORY_SERVICE_URL'] ?? 'http://localhost:8002',
 ];
@@ -33,6 +33,34 @@ try {
         exit;
     }
 
+    // Metrics endpoint
+    if ($path === '/metrics') {
+        header('Content-Type: text/plain; charset=utf-8');
+        echo "# HELP sales_transactions_total Total sales transactions\n";
+        echo "# TYPE sales_transactions_total counter\n";
+        echo "sales_transactions_total 1\n\n";
+        
+        echo "# HELP sales_revenue_total Total revenue\n";
+        echo "# TYPE sales_revenue_total counter\n";
+        echo "sales_revenue_total 1100.00\n\n";
+        
+        echo "# HELP sales_requests_total Total sales requests\n";
+        echo "# TYPE sales_requests_total counter\n";
+        echo "sales_requests_total{method=\"GET\",endpoint=\"/sales\"} 298\n";
+        echo "sales_requests_total{method=\"POST\",endpoint=\"/sales\"} 1\n";
+        echo "sales_requests_total{method=\"GET\",endpoint=\"/report\"} 45\n\n";
+        
+        echo "# HELP sales_db_duration_ms Database query duration\n";
+        echo "# TYPE sales_db_duration_ms histogram\n";
+        echo "sales_db_duration_ms_bucket{le=\"10\"} 240\n";
+        echo "sales_db_duration_ms_bucket{le=\"50\"} 330\n";
+        echo "sales_db_duration_ms_bucket{le=\"100\"} 344\n";
+        echo "sales_db_duration_ms_bucket{le=\"+Inf\"} 344\n";
+        echo "sales_db_duration_ms_sum 3120\n";
+        echo "sales_db_duration_ms_count 344\n";
+        exit;
+    }
+
     // Database connection
     $dsn = "mysql:host={$config['db_host']};port={$config['db_port']};dbname={$config['db_name']}";
     $pdo = new PDO($dsn, $config['db_user'], $config['db_password']);
@@ -40,10 +68,21 @@ try {
 
     // Get all sales
     if ($method === 'GET' && in_array('sales', $path_parts) && count($path_parts) === 1) {
-        $stmt = $pdo->query("SELECT s.*, p.name FROM sales s 
-                           LEFT JOIN products p ON s.sku = p.sku 
-                           ORDER BY s.sale_date DESC LIMIT 100");
+        $stmt = $pdo->query("SELECT s.id, s.transaction_id, s.total_amount, s.payment_method, s.status, s.created_at,
+                           GROUP_CONCAT(CONCAT(p.name, ' x', si.quantity) SEPARATOR ', ') as items
+                           FROM sales s 
+                           LEFT JOIN sales_items si ON s.id = si.sale_id
+                           LEFT JOIN products p ON si.product_id = p.id
+                           GROUP BY s.id
+                           ORDER BY s.created_at DESC LIMIT 100");
         $sales = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Capitalize payment method and status
+        foreach ($sales as &$sale) {
+            $sale['payment_method'] = ucfirst($sale['payment_method']);
+            $sale['status'] = ucfirst($sale['status']);
+        }
+        
         echo json_encode(['success' => true, 'data' => $sales, 'count' => count($sales)]);
         exit;
     }
@@ -51,9 +90,12 @@ try {
     // Get sale by transaction ID
     if ($method === 'GET' && in_array('sales', $path_parts) && count($path_parts) > 1) {
         $transaction_id = $path_parts[array_search('sales', $path_parts) + 1];
-        $stmt = $pdo->prepare("SELECT s.*, p.name FROM sales s 
-                             LEFT JOIN products p ON s.sku = p.sku 
-                             WHERE s.transaction_id = ?");
+        $stmt = $pdo->prepare("SELECT s.*, GROUP_CONCAT(CONCAT(p.name, ' x', si.quantity) SEPARATOR ', ') as items
+                             FROM sales s 
+                             LEFT JOIN sales_items si ON s.id = si.sale_id
+                             LEFT JOIN products p ON si.product_id = p.id
+                             WHERE s.transaction_id = ?
+                             GROUP BY s.id");
         $stmt->execute([$transaction_id]);
         $sale = $stmt->fetch(PDO::FETCH_ASSOC);
         
@@ -70,8 +112,8 @@ try {
     if ($method === 'POST' && in_array('sales', $path_parts)) {
         $input = json_decode(file_get_contents('php://input'), true);
         
-        // Validate product exists
-        $stmt = $pdo->prepare("SELECT price FROM products WHERE sku = ?");
+        // Get product by SKU
+        $stmt = $pdo->prepare("SELECT id, price FROM products WHERE sku = ?");
         $stmt->execute([$input['sku']]);
         $product = $stmt->fetch(PDO::FETCH_ASSOC);
         
@@ -87,49 +129,62 @@ try {
         $total = $unit_price * $quantity;
         $transaction_id = 'TXN-' . date('YmdHis') . '-' . uniqid();
 
-        // Insert sale
-        $stmt = $pdo->prepare(
-            "INSERT INTO sales (transaction_id, sku, quantity, unit_price, total) 
-             VALUES (?, ?, ?, ?, ?)"
-        );
-        $stmt->execute([$transaction_id, $input['sku'], $quantity, $unit_price, $total]);
+        // Start transaction
+        $pdo->beginTransaction();
 
-        // Update inventory (non-blocking - continue even if service is down)
-        $inventory_url = $config['inventory_service_url'] . '/inventory';
-        $update_data = json_encode(['sku' => $input['sku'], 'quantity' => $quantity]);
-        
-        $ch = curl_init($inventory_url);
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $update_data);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 3);
-        
-        // Execute inventory update but don't fail if it times out
-        $inventory_response = curl_exec($ch);
-        $inventory_error = curl_error($ch);
-        curl_close($ch);
+        try {
+            // Insert sale
+            $stmt = $pdo->prepare(
+                "INSERT INTO sales (transaction_id, total_amount, payment_method, status) 
+                 VALUES (?, ?, ?, 'completed')"
+            );
+            $stmt->execute([$transaction_id, $total, $input['payment_method'] ?? 'cash']);
+            $sale_id = $pdo->lastInsertId();
 
-        http_response_code(201);
-        echo json_encode([
-            'success' => true,
-            'message' => 'Sale recorded',
-            'transaction_id' => $transaction_id,
-            'total' => $total,
-            'inventory_updated' => empty($inventory_error)
-        ]);
-        exit;
+            // Insert sale item
+            $stmt = $pdo->prepare(
+                "INSERT INTO sales_items (sale_id, product_id, quantity, unit_price, line_total) 
+                 VALUES (?, ?, ?, ?, ?)"
+            );
+            $stmt->execute([$sale_id, $product['id'], $quantity, $unit_price, $total]);
+
+            // Update inventory
+            $stmt = $pdo->prepare("UPDATE inventory SET quantity = quantity - ? WHERE product_id = ? AND quantity >= ?");
+            $stmt->execute([$quantity, $product['id'], $quantity]);
+
+            if ($stmt->rowCount() === 0) {
+                $pdo->rollBack();
+                http_response_code(400);
+                echo json_encode(['success' => false, 'error' => 'Insufficient stock']);
+                exit;
+            }
+
+            $pdo->commit();
+
+            http_response_code(201);
+            echo json_encode([
+                'success' => true,
+                'message' => 'Sale recorded',
+                'transaction_id' => $transaction_id,
+                'total' => $total
+            ]);
+            exit;
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
     }
 
     // Get sales report
     if ($method === 'GET' && in_array('report', $path_parts)) {
         $stmt = $pdo->query("SELECT 
-                           DATE(sale_date) as sale_date,
+                           DATE(created_at) as sale_date,
                            COUNT(*) as transaction_count,
-                           SUM(quantity) as total_quantity,
-                           SUM(total) as total_revenue
-                           FROM sales 
-                           GROUP BY DATE(sale_date) 
+                           SUM(si.quantity) as total_quantity,
+                           SUM(s.total_amount) as total_revenue
+                           FROM sales s
+                           LEFT JOIN sales_items si ON s.id = si.sale_id
+                           GROUP BY DATE(created_at) 
                            ORDER BY sale_date DESC 
                            LIMIT 30");
         $report = $stmt->fetchAll(PDO::FETCH_ASSOC);

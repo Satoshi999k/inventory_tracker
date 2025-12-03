@@ -34,19 +34,26 @@ function throttle(func, limit) {
 
 async function loadDashboard() {
     try {
+        console.log('Loading dashboard...');
         const now = Date.now();
         if (now - lastDashboardUpdate < MIN_REFRESH_INTERVAL) {
+            console.log('Dashboard refresh throttled');
             return; // Skip if too soon
         }
         lastDashboardUpdate = now;
 
         // Load products with cache
+        console.log('Fetching products...');
         const productsRes = await api.get('/products', true);
+        console.log('Products response:', productsRes);
         const products = productsRes.data || [];
+        console.log('Products:', products);
         document.getElementById('totalProducts').textContent = products.length;
 
         // Load inventory with cache
+        console.log('Fetching inventory...');
         const inventoryRes = await api.get('/inventory', true);
+        console.log('Inventory response:', inventoryRes);
         const inventory = inventoryRes.data || [];
         
         // Calculate low stock items and inventory value
@@ -64,7 +71,7 @@ async function loadDashboard() {
         document.getElementById('inventoryValue').textContent = formatCurrency(totalValue);
 
         // Load alerts
-        await loadAlerts();
+        await loadAlerts(inventory);
 
         // Load recent sales
         await loadRecentSales();
@@ -227,18 +234,26 @@ async function loadCharts(products, inventory) {
     }
 }
 
-async function loadAlerts() {
+async function loadAlerts(inventory) {
     try {
-        const response = await api.get('/alerts', true);
-        const alerts = response.alerts || [];
         const alertsList = document.getElementById('alertsList');
+        
+        // Filter low stock items from inventory
+        const lowStockAlerts = inventory.filter(item => item.quantity < item.stock_threshold)
+            .map(item => ({
+                name: item.name,
+                sku: item.sku,
+                quantity: item.quantity,
+                stock_threshold: item.stock_threshold,
+                deficit: item.stock_threshold - item.quantity
+            }));
 
-        if (alerts.length === 0) {
+        if (lowStockAlerts.length === 0) {
             alertsList.innerHTML = '<p><i class="material-icons inline-icon">check_circle</i> No low stock items</p>';
             return;
         }
 
-        alertsList.innerHTML = alerts.map(alert => `
+        alertsList.innerHTML = lowStockAlerts.map(alert => `
             <div class="alert-item">
                 <strong>${alert.name}</strong> (${alert.sku})<br>
                 Current: ${alert.quantity} | Threshold: ${alert.stock_threshold} | Deficit: ${alert.deficit}
@@ -264,17 +279,17 @@ async function loadRecentSales() {
         table.innerHTML = sales.map(sale => `
             <tr>
                 <td>${sale.transaction_id}</td>
-                <td>${sale.name || 'Unknown'}</td>
-                <td>${sale.quantity}</td>
-                <td>${formatCurrency(sale.total)}</td>
-                <td>${formatDate(sale.sale_date)}</td>
+                <td>${sale.items || 'Unknown'}</td>
+                <td>${sale.payment_method || 'N/A'}</td>
+                <td>${formatCurrency(sale.total_amount)}</td>
+                <td>${formatDate(sale.created_at)}</td>
             </tr>
         `).join('');
 
         // Calculate today's sales
         const today = new Date().toDateString();
-        const todaysSales = sales.filter(s => new Date(s.sale_date).toDateString() === today);
-        const salesToday = todaysSales.reduce((sum, s) => sum + (parseFloat(s.total) || 0), 0);
+        const todaysSales = sales.filter(s => new Date(s.created_at).toDateString() === today);
+        const salesToday = todaysSales.reduce((sum, s) => sum + (parseFloat(s.total_amount) || 0), 0);
         document.getElementById('salesToday').textContent = formatCurrency(salesToday);
 
     } catch (error) {
