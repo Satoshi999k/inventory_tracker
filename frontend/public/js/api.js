@@ -87,8 +87,13 @@ const api = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            
             const result = await response.json();
+            
+            // If response is not ok, merge error info
+            if (!response.ok) {
+                return { ...result, error: result.error || `HTTP ${response.status}` };
+            }
             
             // Invalidate related caches on POST
             this.invalidateCache(['/products', '/inventory', '/sales']);

@@ -64,6 +64,7 @@
                 </div>
 
                 <div class="product-grid" id="productsGrid"></div>
+                <div id="productsPagination"></div>
             </section>
 
             <!-- Add Product Modal -->
@@ -76,7 +77,18 @@
                         <input type="text" placeholder="Product Name" id="name" required>
                         <input type="text" placeholder="Category" id="category">
                         <input type="number" placeholder="Price" id="price" step="0.01" required>
+                        <input type="number" placeholder="Cost" id="cost" step="0.01">
                         <textarea placeholder="Description" id="description"></textarea>
+                        <div class="file-input-wrapper">
+                            <label for="image_file" class="file-label">Choose Product Image:</label>
+                            <input type="file" id="image_file" accept="image/*">
+                            <small style="color: #999; display: block; margin-top: 8px;">
+                                Select an image file from your computer (JPG, PNG, GIF, etc.)
+                            </small>
+                            <div id="imagePreview" class="image-preview" style="display: none; margin-top: 10px;">
+                                <img id="previewImg" src="" alt="Preview" style="max-width: 150px; max-height: 150px; border-radius: 4px;">
+                            </div>
+                        </div>
                         <input type="number" placeholder="Stock Threshold" id="stock_threshold" value="10">
                         <button type="submit" class="btn btn-success"><i class="material-icons btn-icon">save</i> Add Product</button>
                     </form>
@@ -85,7 +97,7 @@
         </main>
 
         <footer>
-            <p>&copy; 2024 ÁDRASTOS Inventory Tracker. All rights reserved.</p>
+            <p>&copy; 2025 ÁDRASTOS Inventory Tracker. All rights reserved.</p>
         </footer>
     </div>
 

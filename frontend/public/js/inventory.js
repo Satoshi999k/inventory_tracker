@@ -1,6 +1,9 @@
-// Inventory page functionality
+// Inventory page functionality with pagination
 let lastInventoryLoad = 0;
 const INVENTORY_REFRESH_INTERVAL = 20000; // 20 seconds minimum
+const ITEMS_PER_PAGE = 15;
+let currentInventoryPage = 1;
+let allInventoryItems = [];
 
 async function loadInventory() {
     try {
@@ -12,50 +15,62 @@ async function loadInventory() {
         lastInventoryLoad = now;
 
         const response = await api.get('/inventory', true);
-        const inventory = response.data || [];
-        const table = document.getElementById('inventoryTable');
-
-        if (inventory.length === 0) {
+        allInventoryItems = response.data || [];
+        
+        if (allInventoryItems.length === 0) {
+            const table = document.getElementById('inventoryTable');
             table.innerHTML = '<tr><td colspan="6" style="text-align: center;">No inventory items found</td></tr>';
             updateInventoryStats([]);
             return;
         }
 
-        table.innerHTML = inventory.map(item => {
-            let status = '';
-            if (item.quantity < item.stock_threshold) {
-                status = `<span class="status-low"><i class="material-icons">warning</i>LOW</span>`;
-            } else if (item.quantity < item.stock_threshold * 1.5) {
-                status = `<span class="status-medium"><i class="material-icons">info</i>MEDIUM</span>`;
-            } else {
-                status = `<span class="status-high"><i class="material-icons">check_circle</i>OK</span>`;
-            }
-
-            return `
-                <tr>
-                    <td>${item.sku}</td>
-                    <td>${item.name || 'N/A'}</td>
-                    <td>${item.quantity}</td>
-                    <td>${item.stock_threshold}</td>
-                    <td>${status}</td>
-                    <td>
-                        <button class="btn btn-primary" onclick="editStock('${item.sku}')">Adjust</button>
-                    </td>
-                </tr>
-            `;
-        }).join('');
-
-        updateInventoryStats(inventory);
+        currentInventoryPage = 1;
+        renderInventoryPage();
+        updateInventoryStats(allInventoryItems);
 
         // Populate restock dropdown
         const select = document.getElementById('restockSku');
         select.innerHTML = '<option value="">Select Product...</option>' + 
-            inventory.map(item => `<option value="${item.sku}">${item.name} (${item.sku})</option>`).join('');
+            allInventoryItems.map(item => `<option value="${item.sku}">${item.name} (${item.sku})</option>`).join('');
 
     } catch (error) {
         console.error('Error loading inventory:', error);
         showAlert('Failed to load inventory', 'error');
     }
+}
+
+function renderInventoryPage() {
+    const table = document.getElementById('inventoryTable');
+    const start = (currentInventoryPage - 1) * ITEMS_PER_PAGE;
+    const end = start + ITEMS_PER_PAGE;
+    const pageItems = allInventoryItems.slice(start, end);
+
+    const html = pageItems.map(item => {
+        let status = '';
+        if (item.quantity < item.stock_threshold) {
+            status = `<span class="status-low"><i class="material-icons">warning</i>LOW</span>`;
+        } else if (item.quantity < item.stock_threshold * 1.5) {
+            status = `<span class="status-medium"><i class="material-icons">info</i>MEDIUM</span>`;
+        } else {
+            status = `<span class="status-high"><i class="material-icons">check_circle</i>OK</span>`;
+        }
+
+        return `
+            <tr>
+                <td>${item.sku}</td>
+                <td>${item.name || 'N/A'}</td>
+                <td>${item.quantity}</td>
+                <td>${item.stock_threshold}</td>
+                <td>${status}</td>
+                <td>
+                    <button class="btn btn-primary" onclick="editStock('${item.sku}')">Adjust</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+    
+    table.innerHTML = html;
+    updateInventoryPagination();
 }
 
 function updateInventoryStats(inventory) {
@@ -85,6 +100,9 @@ function updateInventoryStats(inventory) {
 
 function openRestockForm() {
     document.getElementById('restockModal').style.display = 'block';
+    // Add event listeners for auto-calculation
+    document.getElementById('restockQuantity').addEventListener('input', calculateTotalCost);
+    document.getElementById('restockCostPerUnit').addEventListener('input', calculateTotalCost);
 }
 
 function closeRestockForm() {
@@ -92,14 +110,36 @@ function closeRestockForm() {
     document.getElementById('restockForm').reset();
 }
 
+function calculateTotalCost() {
+    const quantity = parseFloat(document.getElementById('restockQuantity').value) || 0;
+    const costPerUnit = parseFloat(document.getElementById('restockCostPerUnit').value) || 0;
+    const totalCost = quantity * costPerUnit;
+    
+    // Only update if both values are present
+    if (quantity > 0 && costPerUnit > 0) {
+        document.getElementById('restockTotalCost').value = totalCost.toFixed(2);
+    } else {
+        document.getElementById('restockTotalCost').value = '';
+    }
+}
+
 async function submitRestock(event) {
     event.preventDefault();
 
     const sku = document.getElementById('restockSku').value;
     const quantity = parseInt(document.getElementById('restockQuantity').value);
+    const supplier = document.getElementById('restockSupplier').value || null;
+    const costPerUnit = parseFloat(document.getElementById('restockCostPerUnit').value) || null;
+    const totalCost = parseFloat(document.getElementById('restockTotalCost').value) || null;
 
     try {
-        const response = await api.post('/restock', { sku, quantity });
+        const response = await api.post('/restock', { 
+            sku, 
+            quantity,
+            supplier,
+            cost_per_unit: costPerUnit,
+            total_cost: totalCost
+        });
         if (response.success) {
             showAlert('Inventory restocked successfully', 'success');
             closeRestockForm();
@@ -214,6 +254,49 @@ async function submitRestockQuantity(sku, quantity) {
     }
 }
 
+function updateInventoryPagination() {
+    const totalPages = Math.ceil(allInventoryItems.length / ITEMS_PER_PAGE);
+    const paginationEl = document.getElementById('inventoryPagination');
+    
+    if (!paginationEl) return;
+    
+    if (totalPages <= 1) {
+        paginationEl.innerHTML = '';
+        return;
+    }
+
+    let html = `<div style="text-align: center; margin-top: 20px; padding: 20px;">`;
+    
+    if (currentInventoryPage > 1) {
+        html += `<button class="btn btn-secondary" onclick="prevInventoryPage()" style="margin-right: 10px;">← Previous</button>`;
+    }
+    
+    html += `<span style="margin: 0 10px; color: #666;">Page ${currentInventoryPage} of ${totalPages}</span>`;
+    
+    if (currentInventoryPage < totalPages) {
+        html += `<button class="btn btn-secondary" onclick="nextInventoryPage()" style="margin-left: 10px;">Next →</button>`;
+    }
+    
+    html += `</div>`;
+    paginationEl.innerHTML = html;
+}
+
+function nextInventoryPage() {
+    const totalPages = Math.ceil(allInventoryItems.length / ITEMS_PER_PAGE);
+    if (currentInventoryPage < totalPages) {
+        currentInventoryPage++;
+        renderInventoryPage();
+        document.querySelector('#inventoryTable').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+function prevInventoryPage() {
+    if (currentInventoryPage > 1) {
+        currentInventoryPage--;
+        renderInventoryPage();
+        document.querySelector('#inventoryTable').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
 // Load inventory on page load
 document.addEventListener('DOMContentLoaded', loadInventory);
 

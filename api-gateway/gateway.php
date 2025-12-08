@@ -17,9 +17,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 // Configuration
 $services = [
-    'product' => 'http://localhost:8001',
-    'inventory' => 'http://localhost:8002',
-    'sales' => 'http://localhost:8003',
+    'product' => 'http://product-catalog-service:8000',
+    'inventory' => 'http://inventory-service:8000',
+    'sales' => 'http://sales-service:8000',
 ];
 
 // Parse request

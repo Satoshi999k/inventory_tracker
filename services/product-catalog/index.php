@@ -66,7 +66,7 @@ try {
 
     // Get products
     if ($method === 'GET' && in_array('products', $path_parts)) {
-        $stmt = $pdo->query("SELECT p.id, p.sku, p.name, p.category, p.price, p.description, COALESCE(i.stock_threshold, 10) as stock_threshold FROM products p 
+        $stmt = $pdo->query("SELECT p.id, p.sku, p.name, p.category, p.price, p.description, p.image_url, COALESCE(i.stock_threshold, 10) as stock_threshold FROM products p 
                            LEFT JOIN inventory i ON p.id = i.product_id ORDER BY p.created_at DESC LIMIT 1000", PDO::FETCH_ASSOC);
         $products = $stmt->fetchAll();
         header('Cache-Control: public, max-age=30');
@@ -95,15 +95,17 @@ try {
         $input = json_decode(file_get_contents('php://input'), true);
         
         $stmt = $pdo->prepare(
-            "INSERT INTO products (sku, name, category, price, description) 
-             VALUES (?, ?, ?, ?, ?)"
+            "INSERT INTO products (sku, name, category, price, cost, description, image_url) 
+             VALUES (?, ?, ?, ?, ?, ?, ?)"
         );
         $stmt->execute([
             $input['sku'],
             $input['name'],
             $input['category'] ?? null,
             $input['price'],
-            $input['description'] ?? null
+            $input['cost'] ?? null,
+            $input['description'] ?? null,
+            $input['image_url'] ?? null
         ]);
 
         http_response_code(201);
@@ -117,14 +119,16 @@ try {
         $sku = $input['sku'];
 
         $stmt = $pdo->prepare(
-            "UPDATE products SET name = ?, category = ?, price = ?, description = ? 
+            "UPDATE products SET name = ?, category = ?, price = ?, cost = ?, description = ?, image_url = ? 
              WHERE sku = ?"
         );
         $stmt->execute([
             $input['name'],
             $input['category'] ?? null,
             $input['price'],
+            $input['cost'] ?? null,
             $input['description'] ?? null,
+            $input['image_url'] ?? null,
             $sku
         ]);
 

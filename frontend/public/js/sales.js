@@ -79,14 +79,15 @@ async function submitNewSale(event) {
 
     const sku = document.getElementById('saleSku').value;
     const quantity = parseInt(document.getElementById('saleQuantity').value);
+    const paymentMethod = document.getElementById('salePaymentMethod').value;
 
-    if (!sku || quantity <= 0) {
-        showAlert('Please select a product and enter a valid quantity', 'error');
+    if (!sku || quantity <= 0 || !paymentMethod) {
+        showAlert('Please select a product, enter a valid quantity, and select a payment method', 'error');
         return;
     }
 
     try {
-        const response = await api.post('/sales', { sku, quantity });
+        const response = await api.post('/sales', { sku, quantity, payment_method: paymentMethod });
         
         if (response.success) {
             showAlert(`Sale recorded! Transaction ID: ${response.transaction_id}`, 'success');
@@ -94,18 +95,12 @@ async function submitNewSale(event) {
             // Reload sales data
             lastSalesLoad = 0;
             loadSales();
-        } else if (response.error) {
-            // Handle various error types
-            let errorMsg = response.error;
-            if (response.error.includes('HTTP 503')) {
-                errorMsg = 'Sale recorded but inventory service is temporarily unavailable. Please refresh to see the sale.';
-            }
-            showAlert('Failed to record sale: ' + errorMsg, 'error');
+        } else {
+            // Only show error if success is explicitly false
+            showAlert('Failed to record sale: ' + (response.error || 'Unknown error'), 'error');
             // Still reload sales in case it was partially recorded
             lastSalesLoad = 0;
             loadSales();
-        } else {
-            showAlert('Failed to record sale: Unknown error', 'error');
         }
     } catch (error) {
         console.error('Error recording sale:', error);

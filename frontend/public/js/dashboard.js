@@ -150,7 +150,7 @@ async function loadCharts(products, inventory) {
                 options: {
                     responsive: true,
                     maintainAspectRatio: true,
-                    animation: { duration: 300 },
+                    animation: { duration: 100 },
                     plugins: { legend: { display: true } },
                     scales: {
                         y: {
@@ -185,7 +185,7 @@ async function loadCharts(products, inventory) {
                 options: {
                     responsive: true,
                     maintainAspectRatio: true,
-                    animation: { duration: 300 },
+                    animation: { duration: 100 },
                     indexAxis: 'y',
                     scales: { x: { beginAtZero: true } }
                 }

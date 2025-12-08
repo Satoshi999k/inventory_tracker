@@ -1,5 +1,5 @@
 {
-{"name": "inventory/sales-service",
+"name": "inventory/sales-service",
     "description": "Sales Management Microservice",
     "require": {
         "php": ">=8.2",

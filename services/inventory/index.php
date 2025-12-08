@@ -114,14 +114,40 @@ try {
     if ($method === 'POST' && in_array('restock', $path_parts)) {
         $input = json_decode(file_get_contents('php://input'), true);
         
-        $stmt = $pdo->prepare("UPDATE inventory SET quantity = quantity + ? WHERE product_id = (SELECT id FROM products WHERE sku = ?)");
-        $stmt->execute([$input['quantity'], $input['sku']]);
-
-        if ($stmt->rowCount() > 0) {
-            echo json_encode(['success' => true, 'message' => 'Inventory restocked']);
-        } else {
+        // Get product ID from SKU
+        $stmt = $pdo->prepare("SELECT id FROM products WHERE sku = ?");
+        $stmt->execute([$input['sku']]);
+        $product = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$product) {
             http_response_code(400);
             echo json_encode(['success' => false, 'error' => 'SKU not found']);
+            exit;
+        }
+        
+        $product_id = $product['id'];
+        
+        // Update inventory
+        $stmt = $pdo->prepare("UPDATE inventory SET quantity = quantity + ? WHERE product_id = ?");
+        $stmt->execute([$input['quantity'], $product_id]);
+        
+        // Log restock action
+        $stmt = $pdo->prepare(
+            "INSERT INTO restock_logs (product_id, quantity_added, supplier, cost_per_unit, total_cost) 
+             VALUES (?, ?, ?, ?, ?)"
+        );
+        $stmt->execute([
+            $product_id,
+            $input['quantity'],
+            $input['supplier'] ?? null,
+            $input['cost_per_unit'] ?? null,
+            $input['total_cost'] ?? null
+        ]);
+
+        if ($stmt->rowCount() > 0) {
+            echo json_encode(['success' => true, 'message' => 'Inventory restocked and logged']);
+        } else {
+            echo json_encode(['success' => true, 'message' => 'Inventory restocked']);
         }
         exit;
     }

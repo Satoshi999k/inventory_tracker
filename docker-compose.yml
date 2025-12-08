@@ -11,7 +11,7 @@ services:
       MYSQL_USER: inventory_user
       MYSQL_PASSWORD: inventory_pass
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./databases/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -66,7 +66,7 @@ services:
   # Product Catalog Service
   product-catalog-service:
     build:
-      context: ./services/product-catalog-service
+      context: ./services/product-catalog
       dockerfile: Dockerfile
     container_name: inventorytracker-product-service
     ports:
@@ -88,7 +88,7 @@ services:
   # Inventory Service
   inventory-service:
     build:
-      context: ./services/inventory-service
+      context: ./services/inventory
       dockerfile: Dockerfile
     container_name: inventorytracker-inventory-service
     ports:
@@ -113,7 +113,7 @@ services:
   # Sales Service
   sales-service:
     build:
-      context: ./services/sales-service
+      context: ./services/sales
       dockerfile: Dockerfile
     container_name: inventorytracker-sales-service
     ports:
@@ -138,13 +138,31 @@ services:
   # Frontend - Admin Interface
   frontend:
     build:
-      context: ./frontend/admin-interface
+      context: ./frontend
       dockerfile: Dockerfile
     container_name: inventorytracker-frontend
     ports:
-      - "3000:80"
+      - "3000:3000"
     depends_on:
       - api-gateway
+    networks:
+      - inventorynet
+    volumes:
+      - ./frontend/public/images:/app/public/images
+
+  # phpMyAdmin - Database Web Interface
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: inventorytracker-phpmyadmin
+    ports:
+      - "8888:80"
+    environment:
+      PMA_HOST: mysql
+      PMA_USER: inventory_user
+      PMA_PASSWORD: inventory_pass
+      PMA_DB: inventorydb
+    depends_on:
+      - mysql
     networks:
       - inventorynet
 
