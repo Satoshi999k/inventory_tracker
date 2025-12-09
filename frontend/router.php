@@ -11,11 +11,11 @@ $public_dir = __DIR__ . '/public';
 
 // Function to check if services are running
 function areServicesRunning() {
-    $ports = [8000, 8001, 8002, 8003]; // Check API Gateway and services
+    $ports = [8000, 8001, 8002, 8003];
     foreach ($ports as $port) {
         $fp = @fsockopen('localhost', $port, $errno, $errstr, 1);
         if (!$fp) {
-            return false; // At least one service not running
+            return false; 
         } else {
             fclose($fp);
         }

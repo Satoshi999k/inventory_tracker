@@ -9,7 +9,7 @@ let charts = {
 
 let lastDashboardUpdate = 0;
 let dashboardRefreshTimer = null;
-const MIN_REFRESH_INTERVAL = 10000; // Min 10 seconds between refreshes
+const MIN_REFRESH_INTERVAL = 10000; 
 
 // Debounce function
 function debounce(func, delay) {
@@ -38,7 +38,7 @@ async function loadDashboard() {
         const now = Date.now();
         if (now - lastDashboardUpdate < MIN_REFRESH_INTERVAL) {
             console.log('Dashboard refresh throttled');
-            return; // Skip if too soon
+            return; 
         }
         lastDashboardUpdate = now;
 
@@ -301,5 +301,5 @@ async function loadRecentSales() {
 document.addEventListener('DOMContentLoaded', loadDashboard);
 
 // Use throttled refresh for better performance
-const throttledRefresh = throttle(loadDashboard, 15000); // Max once every 15 seconds
+const throttledRefresh = throttle(loadDashboard, 15000);
 setInterval(throttledRefresh, 30000);

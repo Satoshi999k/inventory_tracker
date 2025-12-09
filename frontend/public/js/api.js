@@ -1,7 +1,7 @@
 // API Configuration
 const API_BASE_URL = 'http://127.0.0.1:8000';
-const CACHE_DURATION = 5000; // 5 seconds cache
-const REQUEST_TIMEOUT = 8000; // 8 second timeout
+const CACHE_DURATION = 5000; 
+const REQUEST_TIMEOUT = 8000; 
 
 // Cache management
 const apiCache = new Map();

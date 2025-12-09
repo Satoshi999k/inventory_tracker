@@ -10,7 +10,7 @@ async function loadInventory() {
         // Check if enough time has passed since last load
         const now = Date.now();
         if (now - lastInventoryLoad < 5000) {
-            return; // Skip if less than 5 seconds
+            return;
         }
         lastInventoryLoad = now;
 

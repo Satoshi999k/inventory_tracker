@@ -53,7 +53,7 @@ function clearSearch() {
 async function fileToBase64(file) {
     return new Promise((resolve, reject) => {
         // Limit image size to 500KB max, compress if needed
-        const maxSize = 500 * 1024; // 500KB
+        const maxSize = 500 * 1024;
         
         if (file.size > maxSize) {
             // Compress image on client side
@@ -543,7 +543,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (file && preview && previewImg) {
                 // Check file size
-                const maxSize = 5 * 1024 * 1024; // 5MB
+                const maxSize = 5 * 1024 * 1024;
                 if (file.size > maxSize) {
                     showAlert('Image file is too large (max 5MB). It will be automatically compressed during upload.', 'warning');
                 }
@@ -584,7 +584,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (file && preview && previewImg) {
                 // Check file size
-                const maxSize = 5 * 1024 * 1024; // 5MB
+                const maxSize = 5 * 1024 * 1024;
                 if (file.size > maxSize) {
                     showAlert('Image file is too large (max 5MB). It will be automatically compressed during upload.', 'warning');
                 }
