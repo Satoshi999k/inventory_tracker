@@ -638,6 +638,58 @@ main, .modal, .table-wrapper, .admin-stats {
     flex: 1;
 }
 
+/* Search Section */
+.search-section {
+    margin-bottom: 25px;
+}
+
+.search-box {
+    display: flex;
+    align-items: center;
+    background: white;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 10px 16px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.search-box:focus-within {
+    border-color: #0ea5e9;
+    box-shadow: 0 2px 12px rgba(14, 165, 233, 0.2);
+}
+
+.search-icon {
+    color: #999;
+    margin-right: 10px;
+    font-size: 22px;
+}
+
+.search-box input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 14px;
+    padding: 8px 0;
+    font-family: inherit;
+}
+
+.search-box input::placeholder {
+    color: #aaa;
+}
+
+.clear-icon {
+    color: #999;
+    cursor: pointer;
+    margin-left: 10px;
+    font-size: 20px;
+    transition: color 0.2s ease;
+}
+
+.clear-icon:hover {
+    color: #333;
+}
+
 /* Admin Stats Mini Cards */
 .admin-stats {
     display: grid;
@@ -805,6 +857,46 @@ main, .modal, .table-wrapper, .admin-stats {
 
 .product-info .btn {
     margin-top: auto;
+}
+
+.product-info .product-actions {
+    display: flex !important;
+    gap: 8px;
+    margin-top: 10px;
+    width: 100%;
+}
+
+.product-info .product-actions .btn {
+    flex: 1 !important;
+    padding: 10px 8px !important;
+    font-size: 13px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    min-width: 0 !important;
+    margin-top: 0 !important;
+    border: none !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    transition: background-color 0.3s ease !important;
+    color: white !important;
+}
+
+.product-info .product-actions .edit-btn {
+    background-color: #ff9800 !important;
+}
+
+.product-info .product-actions .edit-btn:hover {
+    background-color: #e68900 !important;
+}
+
+.product-info .product-actions .btn-danger {
+    background-color: #f44336 !important;
+}
+
+.product-info .product-actions .btn-danger:hover {
+    background-color: #da190b !important;
 }
 
 .product-card::before {
@@ -1087,6 +1179,10 @@ main, .modal, .table-wrapper, .admin-stats {
     background-color: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(5px);
     animation: fadeIn 0.3s ease;
+    overflow-y: auto;
+    overflow-x: hidden;
+    will-change: opacity;
+    contain: layout style paint;
 }
 
 .modal-content {
@@ -1099,6 +1195,9 @@ main, .modal, .table-wrapper, .admin-stats {
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
     animation: slideUp 0.3s ease;
     border: 1px solid rgba(14, 165, 233, 0.15);
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    perspective: 1000px;
 }
 
 .modal-header {
@@ -1236,6 +1335,54 @@ main, .modal, .table-wrapper, .admin-stats {
 .modal-content form {
     display: flex;
     flex-direction: column;
+}
+
+/* Form Group Styling */
+.form-group {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    font-weight: 600;
+    color: #333;
+    font-size: 14px;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+    padding: 10px 12px;
+    border: 2px solid #e8eef5;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    font-family: inherit;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #0ea5e9;
+    box-shadow: 0 0 12px rgba(14, 165, 233, 0.15);
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.01), rgba(6, 182, 212, 0.01));
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.form-row .form-group {
+    margin-bottom: 0;
 }
 
 .modal-content input,

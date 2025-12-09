@@ -155,19 +155,68 @@ try {
         $input = json_decode(file_get_contents('php://input'), true);
         $sku = $input['sku'];
 
-        $stmt = $pdo->prepare(
-            "UPDATE products SET name = ?, category = ?, price = ?, cost = ?, description = ?, image_url = ? 
-             WHERE sku = ?"
-        );
-        $stmt->execute([
-            $input['name'],
-            $input['category'] ?? null,
-            $input['price'],
-            $input['cost'] ?? null,
-            $input['description'] ?? null,
-            $input['image_url'] ?? null,
-            $sku
-        ]);
+        // Handle image - only update if a new one is provided
+        $imageUrl = isset($input['image_url']) && !empty($input['image_url']) ? $input['image_url'] : null;
+        
+        // If new image provided, save it to disk
+        if (!empty($imageUrl) && strpos($imageUrl, 'data:image') === 0) {
+            try {
+                // Extract image data
+                $imageData = substr($imageUrl, strpos($imageUrl, ',') + 1);
+                $imageData = base64_decode($imageData);
+                
+                // Create uploads directory if not exists
+                $uploadsDir = __DIR__ . '/../../uploads/products';
+                if (!is_dir($uploadsDir)) {
+                    mkdir($uploadsDir, 0755, true);
+                }
+                
+                // Generate unique filename
+                $filename = 'product_' . uniqid() . '_' . time() . '.jpg';
+                $filepath = $uploadsDir . '/' . $filename;
+                
+                // Save image
+                if (file_put_contents($filepath, $imageData)) {
+                    $imageUrl = '/uploads/products/' . $filename;
+                }
+            } catch (Exception $e) {
+                error_log('Image save failed: ' . $e->getMessage());
+                $imageUrl = null;
+            }
+        } else {
+            $imageUrl = null;
+        }
+
+        // Build update query - only update image if new one provided
+        if ($imageUrl !== null) {
+            $stmt = $pdo->prepare(
+                "UPDATE products SET name = ?, category = ?, price = ?, cost = ?, description = ?, image_url = ? 
+                 WHERE sku = ?"
+            );
+            $stmt->execute([
+                $input['name'],
+                $input['category'] ?? null,
+                $input['price'],
+                $input['cost'] ?? null,
+                $input['description'] ?? null,
+                $imageUrl,
+                $sku
+            ]);
+        } else {
+            // Don't update image_url if no new image provided
+            $stmt = $pdo->prepare(
+                "UPDATE products SET name = ?, category = ?, price = ?, cost = ?, description = ? 
+                 WHERE sku = ?"
+            );
+            $stmt->execute([
+                $input['name'],
+                $input['category'] ?? null,
+                $input['price'],
+                $input['cost'] ?? null,
+                $input['description'] ?? null,
+                $sku
+            ]);
+        }
 
         echo json_encode(['success' => true, 'message' => 'Product updated']);
         exit;

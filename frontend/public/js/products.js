@@ -3,6 +3,51 @@ let lastProductsLoad = 0;
 const PRODUCTS_PER_PAGE = 12;
 let currentProductsPage = 1;
 let allProducts = [];
+let filteredProducts = [];
+let isSearching = false;
+
+// Search products function
+function searchProducts(query) {
+    const searchInput = document.getElementById('productSearch');
+    const clearBtn = document.getElementById('clearSearchBtn');
+    
+    if (query.trim() === '') {
+        // Clear search
+        isSearching = false;
+        filteredProducts = [];
+        clearBtn.style.display = 'none';
+        currentProductsPage = 1;
+        renderProductsPage();
+        updateProductStats(allProducts);
+    } else {
+        // Perform search
+        isSearching = true;
+        clearBtn.style.display = 'block';
+        
+        const lowerQuery = query.toLowerCase();
+        filteredProducts = allProducts.filter(product => {
+            return product.name.toLowerCase().includes(lowerQuery) ||
+                   product.sku.toLowerCase().includes(lowerQuery) ||
+                   (product.category && product.category.toLowerCase().includes(lowerQuery)) ||
+                   (product.description && product.description.toLowerCase().includes(lowerQuery));
+        });
+        
+        currentProductsPage = 1;
+        renderProductsPage();
+        updateProductStats(filteredProducts);
+    }
+}
+
+// Clear search function
+function clearSearch() {
+    document.getElementById('productSearch').value = '';
+    document.getElementById('clearSearchBtn').style.display = 'none';
+    isSearching = false;
+    filteredProducts = [];
+    currentProductsPage = 1;
+    renderProductsPage();
+    updateProductStats(allProducts);
+}
 
 // Helper function to convert file to Base64 with compression
 async function fileToBase64(file) {
@@ -83,7 +128,16 @@ function renderProductsPage() {
     const grid = document.getElementById('productsGrid');
     const start = (currentProductsPage - 1) * PRODUCTS_PER_PAGE;
     const end = start + PRODUCTS_PER_PAGE;
-    const pageProducts = allProducts.slice(start, end);
+    
+    // Use filtered products if searching, otherwise use all products
+    const productsToDisplay = isSearching ? filteredProducts : allProducts;
+    const pageProducts = productsToDisplay.slice(start, end);
+
+    // Show message if no results
+    if (productsToDisplay.length === 0) {
+        grid.innerHTML = '<div class="empty-state"><h3>' + (isSearching ? 'No products match your search' : 'No products found') + '</h3></div>';
+        return;
+    }
 
     grid.innerHTML = pageProducts.map(product => {
         const imageHtml = product.image_url 
@@ -157,31 +211,42 @@ function closeAddProductForm() {
 }
 
 function openEditProductForm(product) {
-    // Populate edit form with product data
-    document.getElementById('editSku').value = product.sku;
-    document.getElementById('editName').value = product.name;
-    document.getElementById('editCategory').value = product.category || '';
-    document.getElementById('editPrice').value = product.price;
-    document.getElementById('editCost').value = product.cost || '';
-    document.getElementById('editDescription').value = product.description || '';
-    document.getElementById('editStockThreshold').value = product.stock_threshold || 10;
+    // Store current product ID for reference
+    document.getElementById('editProductForm').dataset.productSku = product.sku;
     
-    // Show current image if exists
-    const editImagePreview = document.getElementById('editImagePreview');
-    const editPreviewImg = document.getElementById('editPreviewImg');
-    if (product.image_url && editImagePreview && editPreviewImg) {
-        editPreviewImg.src = product.image_url;
-        editImagePreview.style.display = 'block';
-    }
+    // Show edit modal first (fast)
+    const modal = document.getElementById('editProductModal');
+    modal.style.display = 'block';
     
-    // Show edit modal
-    document.getElementById('editProductModal').style.display = 'block';
+    // Disable body scroll to prevent lag
+    document.body.style.overflow = 'hidden';
+    
+    // Then populate form data (prevents UI blocking)
+    requestAnimationFrame(() => {
+        document.getElementById('editSku').value = product.sku;
+        document.getElementById('editName').value = product.name;
+        document.getElementById('editCategory').value = product.category || '';
+        document.getElementById('editPrice').value = product.price;
+        document.getElementById('editCost').value = product.cost || '';
+        document.getElementById('editDescription').value = product.description || '';
+        document.getElementById('editStockThreshold').value = product.stock_threshold || 10;
+        
+        // Show current image if exists
+        const editImagePreview = document.getElementById('editImagePreview');
+        const editPreviewImg = document.getElementById('editPreviewImg');
+        if (product.image_url && editImagePreview && editPreviewImg) {
+            editPreviewImg.src = product.image_url;
+            editImagePreview.style.display = 'block';
+        }
+    });
 }
 
 function closeEditProductForm() {
     document.getElementById('editProductModal').style.display = 'none';
     document.getElementById('editProductForm').reset();
     resetEditImagePreview();
+    // Re-enable body scroll
+    document.body.style.overflow = 'auto';
 }
 
 function resetEditImagePreview() {
@@ -287,35 +352,41 @@ async function submitEditProduct(event) {
         input.disabled = true;
     });
 
-    let imageData = null;
-    const imageFile = document.getElementById('editImageFile').files[0];
-    
     try {
-        // Convert image file to Base64 if selected (with compression)
-        if (imageFile) {
-            imageData = await fileToBase64(imageFile);
-        }
-
+        const sku = document.getElementById('editSku').value;
+        const imageFile = document.getElementById('editImageFile').files[0];
+        
+        // Build update object - only include fields that have values
         const product = {
-            sku: document.getElementById('editSku').value,
+            sku: sku,
             name: document.getElementById('editName').value,
             category: document.getElementById('editCategory').value,
             price: parseFloat(document.getElementById('editPrice').value),
-            cost: parseFloat(document.getElementById('editCost').value) || null,
-            description: document.getElementById('editDescription').value,
-            image_url: imageData || null,
-            stock_threshold: parseInt(document.getElementById('editStockThreshold').value)
+            cost: document.getElementById('editCost').value ? parseFloat(document.getElementById('editCost').value) : null,
+            description: document.getElementById('editDescription').value
         };
+        
+        // Only include new image if user selected one
+        if (imageFile) {
+            product.image_url = await fileToBase64(imageFile);
+        }
+        // If no new image selected, don't include image_url field at all - backend will leave it unchanged
 
         const response = await api.put('/products', product);
         if (response.success) {
             showAlert('Product updated successfully', 'success');
             closeEditProductForm();
             
-            // Update product in array
-            const productIndex = allProducts.findIndex(p => p.sku === product.sku);
+            // Update product in array - only change fields that were edited
+            const productIndex = allProducts.findIndex(p => p.sku === sku);
             if (productIndex !== -1) {
-                allProducts[productIndex] = { ...allProducts[productIndex], ...product };
+                allProducts[productIndex].name = product.name;
+                allProducts[productIndex].category = product.category;
+                allProducts[productIndex].price = product.price;
+                if (product.cost !== null) {
+                    allProducts[productIndex].cost = product.cost;
+                }
+                allProducts[productIndex].description = product.description;
             }
             renderProductsPage();
             updateProductStats(allProducts);
