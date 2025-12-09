@@ -66,7 +66,7 @@ try {
 
     // Get products
     if ($method === 'GET' && in_array('products', $path_parts)) {
-        $stmt = $pdo->query("SELECT p.id, p.sku, p.name, p.category, p.price, p.description, p.image_url, COALESCE(i.stock_threshold, 10) as stock_threshold FROM products p 
+        $stmt = $pdo->query("SELECT p.id, p.sku, p.name, p.category, p.price, p.cost, p.description, p.image_url, COALESCE(i.stock_threshold, 10) as stock_threshold FROM products p 
                            LEFT JOIN inventory i ON p.id = i.product_id ORDER BY p.created_at DESC LIMIT 1000", PDO::FETCH_ASSOC);
         $products = $stmt->fetchAll();
         header('Cache-Control: public, max-age=30');
@@ -94,6 +94,35 @@ try {
     if ($method === 'POST' && in_array('products', $path_parts)) {
         $input = json_decode(file_get_contents('php://input'), true);
         
+        $imageUrl = null;
+        
+        // Handle image storage - save to disk instead of database
+        if (!empty($input['image_url']) && strpos($input['image_url'], 'data:image') === 0) {
+            try {
+                // Extract image data
+                $imageData = substr($input['image_url'], strpos($input['image_url'], ',') + 1);
+                $imageData = base64_decode($imageData);
+                
+                // Create uploads directory if not exists
+                $uploadsDir = __DIR__ . '/../../uploads/products';
+                if (!is_dir($uploadsDir)) {
+                    mkdir($uploadsDir, 0755, true);
+                }
+                
+                // Generate unique filename
+                $filename = 'product_' . uniqid() . '_' . time() . '.jpg';
+                $filepath = $uploadsDir . '/' . $filename;
+                
+                // Save image
+                if (file_put_contents($filepath, $imageData)) {
+                    $imageUrl = '/uploads/products/' . $filename;
+                }
+            } catch (Exception $e) {
+                // If image save fails, continue without image
+                error_log('Image save failed: ' . $e->getMessage());
+            }
+        }
+        
         $stmt = $pdo->prepare(
             "INSERT INTO products (sku, name, category, price, cost, description, image_url) 
              VALUES (?, ?, ?, ?, ?, ?, ?)"
@@ -105,11 +134,19 @@ try {
             $input['price'],
             $input['cost'] ?? null,
             $input['description'] ?? null,
-            $input['image_url'] ?? null
+            $imageUrl
         ]);
+        
+        $productId = $pdo->lastInsertId();
+        
+        // Get inserted product to return
+        $getStmt = $pdo->prepare("SELECT p.id, p.sku, p.name, p.category, p.price, p.description, p.image_url, p.cost, COALESCE(i.stock_threshold, 10) as stock_threshold FROM products p 
+                                  LEFT JOIN inventory i ON p.id = i.product_id WHERE p.id = ?");
+        $getStmt->execute([$productId]);
+        $product = $getStmt->fetch(PDO::FETCH_ASSOC);
 
         http_response_code(201);
-        echo json_encode(['success' => true, 'message' => 'Product created', 'id' => $pdo->lastInsertId()]);
+        echo json_encode(['success' => true, 'message' => 'Product created', 'id' => $productId, 'data' => $product]);
         exit;
     }
 

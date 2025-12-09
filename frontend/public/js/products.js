@@ -4,13 +4,49 @@ const PRODUCTS_PER_PAGE = 12;
 let currentProductsPage = 1;
 let allProducts = [];
 
-// Helper function to convert file to Base64
-function fileToBase64(file) {
+// Helper function to convert file to Base64 with compression
+async function fileToBase64(file) {
     return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = error => reject(error);
-        reader.readAsDataURL(file);
+        // Limit image size to 500KB max, compress if needed
+        const maxSize = 500 * 1024; // 500KB
+        
+        if (file.size > maxSize) {
+            // Compress image on client side
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let { width, height } = img;
+                    
+                    // Scale down if too large
+                    const maxDim = 800;
+                    if (width > maxDim || height > maxDim) {
+                        const ratio = Math.min(maxDim / width, maxDim / height);
+                        width *= ratio;
+                        height *= ratio;
+                    }
+                    
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    // Use JPEG format with quality reduction for compression
+                    resolve(canvas.toDataURL('image/jpeg', 0.7));
+                };
+                img.onerror = () => reject(new Error('Failed to compress image'));
+                img.src = e.target.result;
+            };
+            reader.onerror = error => reject(error);
+            reader.readAsDataURL(file);
+        } else {
+            // File is small enough, use as is
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = error => reject(error);
+            reader.readAsDataURL(file);
+        }
     });
 }
 
@@ -64,12 +100,27 @@ function renderProductsPage() {
                 <div class="product-price">${formatCurrency(product.price)}</div>
                 <p>${product.description || 'No description'}</p>
                 <p><small>Threshold: ${product.stock_threshold}</small></p>
-                <button class="btn btn-danger" onclick="deleteProduct('${product.sku}', '${product.name.replace(/'/g, "\\'")}')">Delete</button>
+                <div class="product-actions">
+                    <button class="btn btn-warning edit-btn" data-product-id="${product.id}" title="Edit"><i class="material-icons">edit</i></button>
+                    <button class="btn btn-danger" onclick="deleteProduct('${product.sku}', '${product.name.replace(/'/g, "\\'")}')">Delete</button>
+                </div>
             </div>
         </div>
     `}).join('');
 
     updateProductsPagination();
+    
+    // Add click listeners to edit buttons
+    document.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const productId = btn.getAttribute('data-product-id');
+            const product = allProducts.find(p => p.id == productId);
+            if (product) {
+                openEditProductForm(product);
+            }
+        });
+    });
 }
 
 function updateProductStats(products) {
@@ -92,7 +143,9 @@ function updateProductStats(products) {
 }
 
 function openAddProductForm() {
+    document.getElementById('editProductModal').style.display = 'none';
     document.getElementById('addProductModal').style.display = 'block';
+    document.getElementById('addProductForm').reset();
     // Reset image preview when opening form
     resetImagePreview();
 }
@@ -101,6 +154,43 @@ function closeAddProductForm() {
     document.getElementById('addProductModal').style.display = 'none';
     document.getElementById('addProductForm').reset();
     resetImagePreview();
+}
+
+function openEditProductForm(product) {
+    // Populate edit form with product data
+    document.getElementById('editSku').value = product.sku;
+    document.getElementById('editName').value = product.name;
+    document.getElementById('editCategory').value = product.category || '';
+    document.getElementById('editPrice').value = product.price;
+    document.getElementById('editCost').value = product.cost || '';
+    document.getElementById('editDescription').value = product.description || '';
+    document.getElementById('editStockThreshold').value = product.stock_threshold || 10;
+    
+    // Show current image if exists
+    const editImagePreview = document.getElementById('editImagePreview');
+    const editPreviewImg = document.getElementById('editPreviewImg');
+    if (product.image_url && editImagePreview && editPreviewImg) {
+        editPreviewImg.src = product.image_url;
+        editImagePreview.style.display = 'block';
+    }
+    
+    // Show edit modal
+    document.getElementById('editProductModal').style.display = 'block';
+}
+
+function closeEditProductForm() {
+    document.getElementById('editProductModal').style.display = 'none';
+    document.getElementById('editProductForm').reset();
+    resetEditImagePreview();
+}
+
+function resetEditImagePreview() {
+    const preview = document.getElementById('editImagePreview');
+    const previewImg = document.getElementById('editPreviewImg');
+    if (preview) {
+        preview.style.display = 'none';
+        if (previewImg) previewImg.src = '';
+    }
 }
 
 function resetImagePreview() {
@@ -115,37 +205,133 @@ function resetImagePreview() {
 async function submitAddProduct(event) {
     event.preventDefault();
 
+    // Disable form and show loading state
+    const submitBtn = event.target.querySelector('button[type="submit"]');
+    const originalBtnText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="material-icons btn-icon">hourglass_empty</i> Adding...';
+    
+    // Disable all form inputs
+    const formInputs = event.target.querySelectorAll('input, textarea, button');
+    const wasDisabled = [];
+    formInputs.forEach(input => {
+        wasDisabled.push(input.disabled);
+        input.disabled = true;
+    });
+
     let imageData = null;
     const imageFile = document.getElementById('image_file').files[0];
     
-    // Convert image file to Base64 if selected
-    if (imageFile) {
-        imageData = await fileToBase64(imageFile);
-    }
-
-    const product = {
-        sku: document.getElementById('sku').value,
-        name: document.getElementById('name').value,
-        category: document.getElementById('category').value,
-        price: parseFloat(document.getElementById('price').value),
-        cost: parseFloat(document.getElementById('cost').value) || null,
-        description: document.getElementById('description').value,
-        image_url: imageData || null,
-        stock_threshold: parseInt(document.getElementById('stock_threshold').value)
-    };
-
     try {
+        // Convert image file to Base64 if selected (with compression)
+        if (imageFile) {
+            imageData = await fileToBase64(imageFile);
+        }
+
+        const product = {
+            sku: document.getElementById('sku').value,
+            name: document.getElementById('name').value,
+            category: document.getElementById('category').value,
+            price: parseFloat(document.getElementById('price').value),
+            cost: parseFloat(document.getElementById('cost').value) || null,
+            description: document.getElementById('description').value,
+            image_url: imageData || null,
+            stock_threshold: parseInt(document.getElementById('stock_threshold').value)
+        };
+
         const response = await api.post('/products', product);
         if (response.success) {
             showAlert('Product added successfully', 'success');
             closeAddProductForm();
-            loadProducts();
+            
+            // Optimized: Add product to array instead of reloading all
+            const newProduct = response.data || {
+                ...product,
+                id: response.id,
+                created_at: new Date().toISOString()
+            };
+            allProducts.unshift(newProduct);
+            currentProductsPage = 1;
+            renderProductsPage();
+            updateProductStats(allProducts);
         } else {
             showAlert('Failed to add product: ' + (response.error || 'Unknown error'), 'error');
         }
     } catch (error) {
         console.error('Error adding product:', error);
         showAlert('Error adding product', 'error');
+    } finally {
+        // Re-enable form
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnText;
+        formInputs.forEach((input, index) => {
+            input.disabled = wasDisabled[index];
+        });
+    }
+}
+
+async function submitEditProduct(event) {
+    event.preventDefault();
+
+    // Disable form and show loading state
+    const submitBtn = event.target.querySelector('button[type="submit"]');
+    const originalBtnText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="material-icons btn-icon">hourglass_empty</i> Updating...';
+    
+    // Disable all form inputs
+    const formInputs = event.target.querySelectorAll('input, textarea, button');
+    const wasDisabled = [];
+    formInputs.forEach(input => {
+        wasDisabled.push(input.disabled);
+        input.disabled = true;
+    });
+
+    let imageData = null;
+    const imageFile = document.getElementById('editImageFile').files[0];
+    
+    try {
+        // Convert image file to Base64 if selected (with compression)
+        if (imageFile) {
+            imageData = await fileToBase64(imageFile);
+        }
+
+        const product = {
+            sku: document.getElementById('editSku').value,
+            name: document.getElementById('editName').value,
+            category: document.getElementById('editCategory').value,
+            price: parseFloat(document.getElementById('editPrice').value),
+            cost: parseFloat(document.getElementById('editCost').value) || null,
+            description: document.getElementById('editDescription').value,
+            image_url: imageData || null,
+            stock_threshold: parseInt(document.getElementById('editStockThreshold').value)
+        };
+
+        const response = await api.put('/products', product);
+        if (response.success) {
+            showAlert('Product updated successfully', 'success');
+            closeEditProductForm();
+            
+            // Update product in array
+            const productIndex = allProducts.findIndex(p => p.sku === product.sku);
+            if (productIndex !== -1) {
+                allProducts[productIndex] = { ...allProducts[productIndex], ...product };
+            }
+            renderProductsPage();
+            updateProductStats(allProducts);
+        } else {
+            showAlert('Failed to update product: ' + (response.error || 'Unknown error'), 'error');
+        }
+    } catch (error) {
+        console.error('Error updating product:', error);
+        showAlert('Error updating product', 'error');
+    } finally {
+        // Re-enable form
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnText;
+        formInputs.forEach((input, index) => {
+            input.disabled = wasDisabled[index];
+        });
     }
 }
 
@@ -275,7 +461,7 @@ function nextProductsPage() {
     }
 }
 
-// Add image preview event listener
+// Add image preview event listener with debouncing
 document.addEventListener('DOMContentLoaded', function() {
     const imageFileInput = document.getElementById('image_file');
     if (imageFileInput) {
@@ -285,6 +471,53 @@ document.addEventListener('DOMContentLoaded', function() {
             const previewImg = document.getElementById('previewImg');
             
             if (file && preview && previewImg) {
+                // Check file size
+                const maxSize = 5 * 1024 * 1024; // 5MB
+                if (file.size > maxSize) {
+                    showAlert('Image file is too large (max 5MB). It will be automatically compressed during upload.', 'warning');
+                }
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    // Show preview with compressed size estimate
+                    previewImg.src = e.target.result;
+                    preview.style.display = 'block';
+                    
+                    // Show file info
+                    const fileSize = (file.size / 1024).toFixed(2);
+                    let infoText = `${file.name} (${fileSize} KB)`;
+                    if (file.size > 500 * 1024) {
+                        infoText += ' - Will be compressed to reduce upload time';
+                    }
+                    const infoEl = preview.querySelector('small') || document.createElement('small');
+                    infoEl.textContent = infoText;
+                    infoEl.style.display = 'block';
+                    infoEl.style.marginTop = '8px';
+                    infoEl.style.color = '#666';
+                    if (!preview.querySelector('small')) {
+                        preview.appendChild(infoEl);
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+    
+    // Add edit image preview listener
+    const editImageFileInput = document.getElementById('editImageFile');
+    if (editImageFileInput) {
+        editImageFileInput.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            const preview = document.getElementById('editImagePreview');
+            const previewImg = document.getElementById('editPreviewImg');
+            
+            if (file && preview && previewImg) {
+                // Check file size
+                const maxSize = 5 * 1024 * 1024; // 5MB
+                if (file.size > maxSize) {
+                    showAlert('Image file is too large (max 5MB). It will be automatically compressed during upload.', 'warning');
+                }
+                
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     previewImg.src = e.target.result;
@@ -297,6 +530,25 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Load products on page load
     loadProducts();
+    
+    // Add click-outside close for modals
+    const addProductModal = document.getElementById('addProductModal');
+    if (addProductModal) {
+        addProductModal.addEventListener('click', (e) => {
+            if (e.target === addProductModal) {
+                closeAddProductForm();
+            }
+        });
+    }
+    
+    const editProductModal = document.getElementById('editProductModal');
+    if (editProductModal) {
+        editProductModal.addEventListener('click', (e) => {
+            if (e.target === editProductModal) {
+                closeEditProductForm();
+            }
+        });
+    }
 });
 
 function prevProductsPage() {
@@ -306,7 +558,3 @@ function prevProductsPage() {
         document.querySelector('#productsGrid').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 }
-
-// Load products on page load
-document.addEventListener('DOMContentLoaded', loadProducts);
-

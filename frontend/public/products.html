@@ -94,6 +94,34 @@
                     </form>
                 </div>
             </div>
+
+            <!-- Edit Product Modal -->
+            <div id="editProductModal" class="modal">
+                <div class="modal-content">
+                    <span class="close" onclick="closeEditProductForm()">&times;</span>
+                    <h2><i class="material-icons inline-icon">edit</i> Edit Product</h2>
+                    <form id="editProductForm" onsubmit="submitEditProduct(event)">
+                        <input type="text" placeholder="SKU" id="editSku" required disabled style="background-color: #f5f5f5; cursor: not-allowed;">
+                        <input type="text" placeholder="Product Name" id="editName" required>
+                        <input type="text" placeholder="Category" id="editCategory">
+                        <input type="number" placeholder="Price" id="editPrice" step="0.01" required>
+                        <input type="number" placeholder="Cost" id="editCost" step="0.01">
+                        <textarea placeholder="Description" id="editDescription"></textarea>
+                        <div class="file-input-wrapper">
+                            <label for="editImageFile" class="file-label">Change Product Image:</label>
+                            <input type="file" id="editImageFile" accept="image/*">
+                            <small style="color: #999; display: block; margin-top: 8px;">
+                                Select a new image file to replace the current one (optional)
+                            </small>
+                            <div id="editImagePreview" class="image-preview" style="display: none; margin-top: 10px;">
+                                <img id="editPreviewImg" src="" alt="Preview" style="max-width: 150px; max-height: 150px; border-radius: 4px;">
+                            </div>
+                        </div>
+                        <input type="number" placeholder="Stock Threshold" id="editStockThreshold" value="10">
+                        <button type="submit" class="btn btn-success"><i class="material-icons btn-icon">save</i> Update Product</button>
+                    </form>
+                </div>
+            </div>
         </main>
 
         <footer>
