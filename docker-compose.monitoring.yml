@@ -31,6 +31,7 @@ services:
     volumes:
       - grafana_data:/var/lib/grafana
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/provisioning/dashboards:/var/lib/grafana/dashboards
     depends_on:
       - prometheus
     networks:
@@ -62,4 +63,5 @@ volumes:
 
 networks:
   inventory-net:
-    driver: bridge
+    external: true
+    name: inventorytracker_inventorynet

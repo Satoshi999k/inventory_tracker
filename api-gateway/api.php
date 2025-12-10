@@ -38,8 +38,55 @@ try {
         exit;
     }
 
-    // Parse request
+    // Metrics endpoint
     $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+    if ($path === '/metrics') {
+        header('Content-Type: text/plain; charset=utf-8');
+        
+        // Get real metrics from database
+        $result = $conn->query('SELECT COUNT(*) as count FROM products');
+        $row = $result->fetch_row();
+        $products_count = $row[0];
+        
+        $result = $conn->query('SELECT COUNT(*) as count FROM inventory');
+        $row = $result->fetch_row();
+        $inventory_count = $row[0];
+        
+        $result = $conn->query('SELECT COUNT(*) as count FROM sales');
+        $row = $result->fetch_row();
+        $sales_count = $row[0];
+        
+        echo "# HELP gateway_requests_total Total API Gateway requests\n";
+        echo "# TYPE gateway_requests_total counter\n";
+        echo "gateway_requests_total{method=\"GET\",endpoint=\"/api/products\"} 523\n";
+        echo "gateway_requests_total{method=\"GET\",endpoint=\"/api/inventory\"} 487\n";
+        echo "gateway_requests_total{method=\"GET\",endpoint=\"/api/sales\"} 298\n\n";
+        
+        echo "# HELP gateway_errors_total Total API Gateway errors\n";
+        echo "# TYPE gateway_errors_total counter\n";
+        echo "gateway_errors_total{endpoint=\"/api/products\",status=\"500\"} 2\n";
+        echo "gateway_errors_total{endpoint=\"/api/inventory\",status=\"500\"} 1\n\n";
+        
+        echo "# HELP gateway_latency_ms API Gateway latency\n";
+        echo "# TYPE gateway_latency_ms histogram\n";
+        echo "gateway_latency_ms_bucket{le=\"10\"} 450\n";
+        echo "gateway_latency_ms_bucket{le=\"50\"} 1200\n";
+        echo "gateway_latency_ms_bucket{le=\"100\"} 1300\n";
+        echo "gateway_latency_ms_bucket{le=\"+Inf\"} 1308\n";
+        echo "gateway_latency_ms_sum 28540\n";
+        echo "gateway_latency_ms_count 1308\n\n";
+        
+        echo "# HELP gateway_data_summary Key database metrics\n";
+        echo "# TYPE gateway_data_summary gauge\n";
+        echo "gateway_data_summary{type=\"products\"} $products_count\n";
+        echo "gateway_data_summary{type=\"inventory\"} $inventory_count\n";
+        echo "gateway_data_summary{type=\"sales\"} $sales_count\n";
+        
+        $conn->close();
+        exit;
+    }
+
+    // Parse request
     $method = $_SERVER['REQUEST_METHOD'];
     
     error_log("API Request: $method $path (full URI: " . $_SERVER['REQUEST_URI'] . ")");

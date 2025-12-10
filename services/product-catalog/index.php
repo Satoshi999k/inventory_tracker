@@ -37,16 +37,24 @@ try {
     // Metrics endpoint
     if ($path === '/metrics') {
         header('Content-Type: text/plain; charset=utf-8');
-        echo "# HELP product_requests_total Total product requests\n";
-        echo "# TYPE product_requests_total counter\n";
-        echo "product_requests_total{method=\"GET\",endpoint=\"/products\"} 487\n";
-        echo "product_requests_total{method=\"POST\",endpoint=\"/products\"} 23\n";
-        echo "product_requests_total{method=\"PUT\",endpoint=\"/products\"} 8\n";
-        echo "product_requests_total{method=\"DELETE\",endpoint=\"/products\"} 2\n\n";
+        
+        // Connect to database for real metrics
+        $dsn = "mysql:host={$config['db_host']};port={$config['db_port']};dbname={$config['db_name']}";
+        $pdo = new PDO($dsn, $config['db_user'], $config['db_password']);
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        
+        // Get actual product count
+        $result = $pdo->query("SELECT COUNT(*) as count FROM products");
+        $count = $result->fetch(PDO::FETCH_ASSOC)['count'];
         
         echo "# HELP product_count Total products in catalog\n";
         echo "# TYPE product_count gauge\n";
-        echo "product_count 10\n\n";
+        echo "product_count $count\n\n";
+        
+        echo "# HELP product_requests_total Total product requests\n";
+        echo "# TYPE product_requests_total counter\n";
+        echo "product_requests_total{method=\"GET\",endpoint=\"/products\"} 487\n";
+        echo "product_requests_total{method=\"POST\",endpoint=\"/products\"} 23\n\n";
         
         echo "# HELP product_db_duration_ms Database query duration\n";
         echo "# TYPE product_db_duration_ms histogram\n";

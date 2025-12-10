@@ -38,19 +38,32 @@ try {
     // Metrics endpoint
     if ($path === '/metrics') {
         header('Content-Type: text/plain; charset=utf-8');
+        
+        // Connect to database for real metrics
+        $dsn = "mysql:host={$config['db_host']};port={$config['db_port']};dbname={$config['db_name']}";
+        $pdo = new PDO($dsn, $config['db_user'], $config['db_password']);
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        
+        // Get total inventory items
+        $result = $pdo->query("SELECT COUNT(*) as count FROM inventory");
+        $total = $result->fetch(PDO::FETCH_ASSOC)['count'];
+        
+        // Get low stock items
+        $result = $pdo->query("SELECT COUNT(*) as count FROM inventory WHERE quantity < stock_threshold");
+        $low_stock = $result->fetch(PDO::FETCH_ASSOC)['count'];
+        
         echo "# HELP inventory_items_total Total inventory items\n";
         echo "# TYPE inventory_items_total gauge\n";
-        echo "inventory_items_total 283\n\n";
+        echo "inventory_items_total $total\n\n";
         
         echo "# HELP inventory_low_stock_items Items below threshold\n";
         echo "# TYPE inventory_low_stock_items gauge\n";
-        echo "inventory_low_stock_items 1\n\n";
+        echo "inventory_low_stock_items $low_stock\n\n";
         
         echo "# HELP inventory_requests_total Total inventory requests\n";
         echo "# TYPE inventory_requests_total counter\n";
         echo "inventory_requests_total{method=\"GET\",endpoint=\"/inventory\"} 412\n";
-        echo "inventory_requests_total{method=\"PUT\",endpoint=\"/inventory\"} 89\n";
-        echo "inventory_requests_total{method=\"POST\",endpoint=\"/restock\"} 15\n\n";
+        echo "inventory_requests_total{method=\"PUT\",endpoint=\"/inventory\"} 89\n\n";
         
         echo "# HELP inventory_db_duration_ms Database query duration\n";
         echo "# TYPE inventory_db_duration_ms histogram\n";

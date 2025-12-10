@@ -17,15 +17,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 // Configuration
 $services = [
-    'product' => 'http://product-catalog-service:8000',
-    'inventory' => 'http://inventory-service:8000',
-    'sales' => 'http://sales-service:8000',
+    'product' => 'http://product-catalog-service:8001',
+    'inventory' => 'http://inventory-service:8002',
+    'sales' => 'http://sales-service:8003',
 ];
 
 // Parse request
 $method = $_SERVER['REQUEST_METHOD'];
 $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $query = $_SERVER['QUERY_STRING'] ?? '';
+
+// Remove /api prefix if present for routing
+$routing_path = $path;
+if (strpos($routing_path, '/api') === 0) {
+    $routing_path = substr($routing_path, 4); // Remove '/api'
+}
 
 // Handle CORS
 if ($method === 'OPTIONS') {
@@ -69,48 +75,48 @@ try {
     }
 
     // Route based on path prefix
-    if (strpos($path, '/products') === 0) {
-        $service_url = $services['product'] . $path;
+    if (strpos($routing_path, '/products') === 0) {
+        $service_url = $services['product'] . $routing_path;
         if ($query) $service_url .= '?' . $query;
         error_log("Routing to product service: $service_url");
         routeRequest($method, $service_url);
         exit;
     }
 
-    if (strpos($path, '/inventory') === 0) {
-        $service_url = $services['inventory'] . $path;
+    if (strpos($routing_path, '/inventory') === 0) {
+        $service_url = $services['inventory'] . $routing_path;
         if ($query) $service_url .= '?' . $query;
         error_log("Routing to inventory service: $service_url");
         routeRequest($method, $service_url);
         exit;
     }
 
-    if (strpos($path, '/sales') === 0) {
-        $service_url = $services['sales'] . $path;
+    if (strpos($routing_path, '/sales') === 0) {
+        $service_url = $services['sales'] . $routing_path;
         if ($query) $service_url .= '?' . $query;
         error_log("Routing to sales service: $service_url");
         routeRequest($method, $service_url);
         exit;
     }
 
-    if (strpos($path, '/restock') === 0) {
-        $service_url = $services['inventory'] . $path;
+    if (strpos($routing_path, '/restock') === 0) {
+        $service_url = $services['inventory'] . $routing_path;
         if ($query) $service_url .= '?' . $query;
         error_log("Routing to inventory service (restock): $service_url");
         routeRequest($method, $service_url);
         exit;
     }
 
-    if (strpos($path, '/alerts') === 0) {
-        $service_url = $services['inventory'] . $path;
+    if (strpos($routing_path, '/alerts') === 0) {
+        $service_url = $services['inventory'] . $routing_path;
         if ($query) $service_url .= '?' . $query;
         error_log("Routing to inventory service (alerts): $service_url");
         routeRequest($method, $service_url);
         exit;
     }
 
-    if (strpos($path, '/report') === 0) {
-        $service_url = $services['sales'] . $path;
+    if (strpos($routing_path, '/report') === 0) {
+        $service_url = $services['sales'] . $routing_path;
         if ($query) $service_url .= '?' . $query;
         error_log("Routing to sales service (report): $service_url");
         routeRequest($method, $service_url);

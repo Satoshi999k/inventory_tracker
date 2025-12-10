@@ -20,39 +20,39 @@ scrape_configs:
   # Prometheus self-monitoring
   - job_name: 'prometheus'
     static_configs:
-      - targets: ['localhost:9090']
+      - targets: ['prometheus:9090']
 
   # API Gateway metrics
   - job_name: 'api-gateway'
     static_configs:
-      - targets: ['localhost:8000']
+      - targets: ['api-gateway:8000']
     metrics_path: '/metrics'
     scrape_interval: 10s
 
   # Product Catalog Service metrics
   - job_name: 'product-catalog'
     static_configs:
-      - targets: ['localhost:8001']
+      - targets: ['product-catalog-service:8001']
     metrics_path: '/metrics'
     scrape_interval: 10s
 
   # Inventory Service metrics
   - job_name: 'inventory'
     static_configs:
-      - targets: ['localhost:8002']
+      - targets: ['inventory-service:8002']
     metrics_path: '/metrics'
     scrape_interval: 10s
 
   # Sales Service metrics
   - job_name: 'sales'
     static_configs:
-      - targets: ['localhost:8003']
+      - targets: ['sales-service:8003']
     metrics_path: '/metrics'
     scrape_interval: 10s
 
   # Frontend metrics
   - job_name: 'frontend'
     static_configs:
-      - targets: ['localhost:3000']
+      - targets: ['frontend:3000']
     metrics_path: '/metrics'
     scrape_interval: 10s

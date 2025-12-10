@@ -6,6 +6,31 @@ let allProducts = [];
 let filteredProducts = [];
 let isSearching = false;
 
+// Performance optimization: Debounce function for form inputs
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Performance optimization: Throttle function
+function throttle(func, limit) {
+    let inThrottle;
+    return function(...args) {
+        if (!inThrottle) {
+            func.apply(this, args);
+            inThrottle = true;
+            setTimeout(() => inThrottle = false, limit);
+        }
+    };
+}
+
 // Search products function
 function searchProducts(query) {
     const searchInput = document.getElementById('productSearch');
@@ -198,10 +223,20 @@ function updateProductStats(products) {
 
 function openAddProductForm() {
     document.getElementById('editProductModal').style.display = 'none';
-    document.getElementById('addProductModal').style.display = 'block';
+    const modal = document.getElementById('addProductModal');
+    modal.style.display = 'block';
     document.getElementById('addProductForm').reset();
-    // Reset image preview when opening form
-    resetImagePreview();
+    
+    // Prevent body scroll during modal
+    document.body.style.overflow = 'hidden';
+    
+    // Reset image preview using requestAnimationFrame
+    requestAnimationFrame(() => {
+        resetImagePreview();
+        // Focus on first input for better UX
+        const firstInput = document.getElementById('sku');
+        if (firstInput) firstInput.focus();
+    });
 }
 
 function closeAddProductForm() {
@@ -601,6 +636,22 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Load products on page load
     loadProducts();
+    
+    // Add debounced search input listener
+    const productSearch = document.getElementById('productSearch');
+    if (productSearch) {
+        productSearch.addEventListener('input', debounce(function(e) {
+            searchProducts(e.target.value);
+        }, 300), { passive: true });
+    }
+    
+    // Add passive scroll listeners to modals for better performance
+    const addProductModalContent = document.querySelector('#addProductModal .modal-content');
+    if (addProductModalContent) {
+        addProductModalContent.addEventListener('scroll', throttle(function() {
+            // Scroll handler optimization
+        }, 100), { passive: true });
+    }
     
     // Add click-outside close for modals
     const addProductModal = document.getElementById('addProductModal');

@@ -19,11 +19,11 @@ COPY . .
 RUN composer install --no-dev --optimize-autoloader
 
 # Expose port
-EXPOSE 8000
+EXPOSE 8002
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:8002/health || exit 1
 
 # Start PHP built-in server
-CMD ["php", "-S", "0.0.0.0:8000", "index.php"]
+CMD ["php", "-S", "0.0.0.0:8002", "index.php"]

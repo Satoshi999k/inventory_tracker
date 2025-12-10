@@ -36,19 +36,32 @@ try {
     // Metrics endpoint
     if ($path === '/metrics') {
         header('Content-Type: text/plain; charset=utf-8');
+        
+        // Connect to database for real metrics
+        $dsn = "mysql:host={$config['db_host']};port={$config['db_port']};dbname={$config['db_name']}";
+        $pdo = new PDO($dsn, $config['db_user'], $config['db_password']);
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        
+        // Get total sales transactions
+        $result = $pdo->query("SELECT COUNT(*) as count FROM sales");
+        $transactions = $result->fetch(PDO::FETCH_ASSOC)['count'];
+        
+        // Get total revenue
+        $result = $pdo->query("SELECT SUM(total_amount) as total FROM sales");
+        $revenue = $result->fetch(PDO::FETCH_ASSOC)['total'] ?? 0;
+        
         echo "# HELP sales_transactions_total Total sales transactions\n";
         echo "# TYPE sales_transactions_total counter\n";
-        echo "sales_transactions_total 1\n\n";
+        echo "sales_transactions_total $transactions\n\n";
         
         echo "# HELP sales_revenue_total Total revenue\n";
         echo "# TYPE sales_revenue_total counter\n";
-        echo "sales_revenue_total 1100.00\n\n";
+        echo "sales_revenue_total $revenue\n\n";
         
         echo "# HELP sales_requests_total Total sales requests\n";
         echo "# TYPE sales_requests_total counter\n";
         echo "sales_requests_total{method=\"GET\",endpoint=\"/sales\"} 298\n";
-        echo "sales_requests_total{method=\"POST\",endpoint=\"/sales\"} 1\n";
-        echo "sales_requests_total{method=\"GET\",endpoint=\"/report\"} 45\n\n";
+        echo "sales_requests_total{method=\"POST\",endpoint=\"/sales\"} $transactions\n\n";
         
         echo "# HELP sales_db_duration_ms Database query duration\n";
         echo "# TYPE sales_db_duration_ms histogram\n";
